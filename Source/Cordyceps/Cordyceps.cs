@@ -11,10 +11,9 @@ namespace Cordyceps
     {
         public const string PLUGIN_GUID = "Cordyceps";
         public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.1.1";
+        public const string PLUGIN_VERSION = "0.1.2";
 
         public static int UnmodifiedTickrate = 40;
-        public static bool TestTickrateModifier = false;
 
         private static bool _initialized;
         
@@ -64,8 +63,8 @@ namespace Cordyceps
             // Put the current RainWorldGame object onto the stack so we can use it to get the tickrate
             cursor.Emit(OpCodes.Ldarg, 0);
             
-            // This code will sit after all vanilla tickrate-modifying code and before any code which uses the
-            // tickrate
+            // This code will sit after all vanilla tickrate-modifying code and before any vanilla code which uses
+            // the tickrate
             cursor.EmitDelegate<Action<RainWorldGame>>((RainWorldGame game) =>
             {
                 try
