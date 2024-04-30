@@ -18,9 +18,9 @@ namespace Cordyceps
             
             Tabs[0].AddItems(new UIelement[]
             {
-                new OpKeyBinder(testSlowTickrateKey, new Vector2(155f, 555f), new Vector2(150f, 30f))
+                new OpKeyBinder(testSlowTickrateKey, new Vector2(155f, 55f), new Vector2(150f, 30f))
                     {description = testSlowTickrateKey.info.description},
-                new OpLabel(15f, 560f, "Test Slow Tickrate Key") 
+                new OpLabel(15f, 60f, "Test Slow Tickrate Key") 
                     {description = testSlowTickrateKey.info.description}
             });
         }

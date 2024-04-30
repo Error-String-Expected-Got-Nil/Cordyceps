@@ -1,5 +1,7 @@
 ﻿using System;
 using BepInEx;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using UnityEngine;
 
 namespace Cordyceps
@@ -31,8 +33,10 @@ namespace Cordyceps
             {
                 Log("Initializing");
                 
-                Log("Registering hooks");
-                On.MainLoopProcess.RawUpdate += MainLoopProcess_RawUpdate_Hook;
+                //Log("Registering hooks");
+                
+                Log("Registering IL hooks");
+                IL.RainWorldGame.RawUpdate += RainWorldGame_RawUpdate_ILHook;
 
                 Log("Registering settings");
                 MachineConnector.SetRegisteredOI("Cordyceps", new CordycepsSettings());
@@ -46,38 +50,51 @@ namespace Cordyceps
             }
         }
 
-        private void MainLoopProcess_RawUpdate_Hook(On.MainLoopProcess.orig_RawUpdate orig, MainLoopProcess self,
-            float dt)
+        private void RainWorldGame_RawUpdate_ILHook(ILContext il)
         {
-            // TODO: Make sure to manually update the speedrun timer!
+            var cursor = new ILCursor(il);
             
-            try
-            {
-                UnmodifiedTickrate = self.framesPerSecond;
+            // Finds `this.oDown = Input.GetKey("o");` in RainWorldGame.RawUpdate
+            cursor.GotoNext(MoveType.After,
+                x => x.MatchLdarg(0),
+                x => x.MatchLdstr("o"),
+                x => x.MatchCall<Input>("GetKey"),
+                x => x.MatchStfld<RainWorldGame>("oDown")
+                );
 
-                if (Input.GetKey(CordycepsSettings.testSlowTickrateKey.Value))
+            // Put the current RainWorldGame object onto the stack so we can use it to get the tickrate
+            cursor.Emit(OpCodes.Ldarg, 0);
+            
+            // This code will sit after all vanilla tickrate-modifying code and before any code which uses the
+            // tickrate
+            cursor.EmitDelegate<Action<RainWorldGame>>((RainWorldGame game) =>
+            {
+                try
                 {
-                    if (keyReleased) {
-                        TestTickrateModifier = !TestTickrateModifier;
-                        keyReleased = false;
+                    UnmodifiedTickrate = game.framesPerSecond;
+                    
+                    if (Input.GetKey(CordycepsSettings.testSlowTickrateKey.Value))
+                    {
+                        if (keyReleased) {
+                            TestTickrateModifier = !TestTickrateModifier;
+                            keyReleased = false;
+                        }
+                    }
+                    else
+                    {
+                        keyReleased = true;
+                    }
+                
+                    if (TestTickrateModifier)
+                    {
+                        game.framesPerSecond = Math.Min(game.framesPerSecond, 20);
                     }
                 }
-                else
+                catch (Exception e)
                 {
-                    keyReleased = true;
+                    Log($"ERROR - Uncaught exception in MainLoopProcess.RawUpdate hook: {e}");
                 }
-                
-                if (TestTickrateModifier)
-                {
-                    self.framesPerSecond = Math.Min(self.framesPerSecond, 20);
-                }
-            }
-            catch (Exception e)
-            {
-                Log($"ERROR - Uncaught exception in MainLoopProcess.RawUpdate hook: {e}");
-            }
-
-            orig(self, dt);
+            });
         }
 
         private static void Log(string str) { Debug.Log($"[Cordyceps] {str}"); }
