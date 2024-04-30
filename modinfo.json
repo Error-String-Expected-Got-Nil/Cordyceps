@@ -1,7 +1,7 @@
 {
     "id": "Cordyceps",
     "name": "Cordyceps TAS",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "target_game_version": "v1.9.15b",
     "authors": "Error: String Expected, Got Nil",
     "description": "TAS mod which will allow for artifically reducing the game's tickrate, or pausing it entirely. When it's done, anyways. Will hopefully also support recording in real time with OBS even while playing in slow motion.",

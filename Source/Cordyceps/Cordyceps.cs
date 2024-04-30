@@ -11,13 +11,12 @@ namespace Cordyceps
     {
         public const string PLUGIN_GUID = "Cordyceps";
         public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.1.0";
+        public const string PLUGIN_VERSION = "0.1.1";
 
         public static int UnmodifiedTickrate = 40;
         public static bool TestTickrateModifier = false;
 
-        private static bool initialized = false;
-        private static bool keyReleased = true;
+        private static bool _initialized;
         
         private void OnEnable()
         {
@@ -27,7 +26,7 @@ namespace Cordyceps
         private void RainWorld_OnModsInit_Hook(On.RainWorld.orig_OnModsInit orig, RainWorld self)
         {
             orig(self);
-            if (initialized) return;
+            if (_initialized) return;
 
             try
             {
@@ -41,12 +40,12 @@ namespace Cordyceps
                 Log("Registering settings");
                 MachineConnector.SetRegisteredOI("Cordyceps", new CordycepsSettings());
                 
-                initialized = true;
+                _initialized = true;
                 Log("Initialized successfully");
             }
             catch (Exception e)
             {
-                Log($"ERROR - Uncaught exception during initialization: {e}");
+                Log($"ERROR - Exception during initialization: {e}");
             }
         }
 
@@ -72,27 +71,10 @@ namespace Cordyceps
                 try
                 {
                     UnmodifiedTickrate = game.framesPerSecond;
-                    
-                    if (Input.GetKey(CordycepsSettings.testSlowTickrateKey.Value))
-                    {
-                        if (keyReleased) {
-                            TestTickrateModifier = !TestTickrateModifier;
-                            keyReleased = false;
-                        }
-                    }
-                    else
-                    {
-                        keyReleased = true;
-                    }
-                
-                    if (TestTickrateModifier)
-                    {
-                        game.framesPerSecond = Math.Min(game.framesPerSecond, 20);
-                    }
                 }
                 catch (Exception e)
                 {
-                    Log($"ERROR - Uncaught exception in MainLoopProcess.RawUpdate hook: {e}");
+                    Log($"ERROR - Exception in RainWorldGame.RawUpdate IL hook: {e}");
                 }
             });
         }
