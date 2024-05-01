@@ -70,12 +70,14 @@ namespace Cordyceps
             InfoLabel.text =
                 "Base Tickrate:\n" +
                 "Desired Tickrate:\n" +
-                "Tickrate Cap:";
+                "Tickrate Cap:\n" +
+                "Tick Pause:";
             
             InfoLabelData.text =
                 $"{Cordyceps.UnmodifiedTickrate}\n" +
                 $"{Cordyceps.DesiredTickrate}\n" +
-                (Cordyceps.TickrateCapOn ? "On" : "Off");
+                (Cordyceps.TickrateCapOn ? "On" : "Off") + "\n" +
+                (Cordyceps.TickPauseOn ? "On" : "Off");
         }
 
         public static void UpdatePosition()

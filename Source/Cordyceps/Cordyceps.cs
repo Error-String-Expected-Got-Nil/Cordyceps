@@ -11,11 +11,12 @@ namespace Cordyceps
     {
         public const string PLUGIN_GUID = "Cordyceps";
         public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.3.4";
+        public const string PLUGIN_VERSION = "0.4.0";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
         public static bool TickrateCapOn;
+        public static bool TickPauseOn;
         public static bool ShowInfoPanel = true;
 
         private const float TickrateChangeInitialTime = 0.25f;
@@ -28,6 +29,7 @@ namespace Cordyceps
         private static bool _toggleTickrateCapHeld;
         private static bool _increaseTickrateHeld;
         private static bool _decreaseTickrateHeld;
+        private static bool _toggleTickPauseHeld;
 
         // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones right now,
         // but will update later hopefully to do things like check if in a game session.
@@ -97,7 +99,7 @@ namespace Cordyceps
                 {
                     UnmodifiedTickrate = game.framesPerSecond;
 
-                    CheckInputs(dt);
+                    CheckInputs(game, dt);
 
                     if (CanAffectTickrate()) game.framesPerSecond = Math.Min(DesiredTickrate, game.framesPerSecond);
                 }
@@ -148,7 +150,7 @@ namespace Cordyceps
             }
         }
 
-        private static void CheckInputs(float dt)
+        private static void CheckInputs(RainWorldGame game, float dt)
         {
             if (Input.GetKey(CordycepsSettings.ToggleInfoPanelKey.Value))
             {
@@ -159,6 +161,16 @@ namespace Cordyceps
                 InfoPanel.UpdateVisibility();
             }
             else _toggleInfoPanelHeld = false;
+
+            if (Input.GetKey(CordycepsSettings.ToggleTickPauseKey.Value))
+            {
+                if (_toggleTickPauseHeld) return;
+
+                _toggleTickPauseHeld = true;
+                game.paused = !game.paused;
+                TickPauseOn = game.paused;
+            }
+            else _toggleTickPauseHeld = false;
 
             if (Input.GetKey(CordycepsSettings.ToggleTickrateCapKey.Value))
             {
