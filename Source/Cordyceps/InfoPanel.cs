@@ -99,6 +99,8 @@ namespace Cordyceps
 
         public static void CheckGrab()
         {
+            if (Header == null) return;
+            
             Vector2 mpos = Input.mousePosition;
             if (Input.GetMouseButton(0))
             {
