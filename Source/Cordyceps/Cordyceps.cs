@@ -75,6 +75,8 @@ namespace Cordyceps
                 x => x.MatchStfld<RainWorldGame>("oDown")
                 );
 
+            // TODO: Fix speedrun timer, it does not slow down with tickrate
+            
             // Put the current RainWorldGame object onto the stack so we can use it to get the tickrate
             cursor.Emit(OpCodes.Ldarg, 0);
             // Put the dt argument from the RawUpdate function onto the stack so we can use it for input checks
