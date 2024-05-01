@@ -41,7 +41,7 @@ namespace Cordyceps
             On.RainWorld.OnModsInit += RainWorld_OnModsInit_Hook;
         }
 
-        private void RainWorld_OnModsInit_Hook(On.RainWorld.orig_OnModsInit orig, RainWorld self)
+        private static void RainWorld_OnModsInit_Hook(On.RainWorld.orig_OnModsInit orig, RainWorld self)
         {
             orig(self);
             if (_initialized) return;
