@@ -71,13 +71,15 @@ namespace Cordyceps
                 "Base Tickrate:\n" +
                 "Desired Tickrate:\n" +
                 "Tickrate Cap:\n" +
-                "Tick Pause:";
+                "Tick Pause:" +
+                (CordycepsSettings.ShowTickCounter.Value ? "\nTick Count:" : "");
             
             _infoLabelData.text =
                 $"{Cordyceps.UnmodifiedTickrate}\n" +
                 $"{Cordyceps.DesiredTickrate}\n" +
                 (Cordyceps.TickrateCapOn ? "On" : "Off") + "\n" +
-                (Cordyceps.TickPauseOn ? "On" : "Off");
+                (Cordyceps.TickPauseOn ? "On" : "Off") +
+                (CordycepsSettings.ShowTickCounter.Value ? $"\n{Cordyceps.TickCount}" : "");
         }
 
         private static void UpdatePosition()

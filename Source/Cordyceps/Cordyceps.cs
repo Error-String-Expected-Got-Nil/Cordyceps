@@ -11,13 +11,16 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.4.1";
+        public const string PluginVersion = "0.5.0";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
         public static bool TickrateCapOn;
         public static bool TickPauseOn;
+        public static bool WaitingForTick;
         public static bool ShowInfoPanel = true;
+        public static uint TickCount;
+        public static bool TickCounterPaused;
 
         private const float TickrateChangeInitialTime = 0.25f;
         private const float TickrateChangeHoldTickTime = 0.05f;
@@ -30,6 +33,9 @@ namespace Cordyceps
         private static bool _increaseTickrateHeld;
         private static bool _decreaseTickrateHeld;
         private static bool _toggleTickPauseHeld;
+        private static bool _tickAdvanceHeld;
+        private static bool _resetTickCounterHeld;
+        private static bool _pauseTickCounterHeld;
 
         // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones currently,
         // but will likely update later to do things like check if the game/simulation is running too.
@@ -56,6 +62,7 @@ namespace Cordyceps
                 On.RoomCamera.ctor += RoomCamera_ctor_Hook;
                 On.RoomCamera.ClearAllSprites += RoomCamera_ClearAllSprites_Hook;
                 On.RainWorldGame.GrafUpdate += RainWorldGame_GrafUpdate_Hook;
+                On.RainWorldGame.Update += RainWorldGame_Update_Hook;
                 On.MoreSlugcats.SpeedRunTimer.GetTimerTickIncrement +=
                     MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook;
                 
@@ -130,6 +137,26 @@ namespace Cordyceps
             InfoPanel.CheckGrab();
             InfoPanel.Update();
         }
+        
+        private static void RainWorldGame_Update_Hook(On.RainWorldGame.orig_Update orig, RainWorldGame self)
+        {
+            orig(self);
+
+            try
+            {
+                if (CordycepsSettings.ShowTickCounter.Value && !TickCounterPaused && !self.GamePaused) TickCount++;
+                
+                if (!WaitingForTick) return;
+                
+                WaitingForTick = false;
+                self.paused = true;
+                TickPauseOn = true;
+            }
+            catch (Exception e)
+            {
+                Log($"ERROR - Exception in RainWorldGame.Update hook: {e}");
+            }
+        }
 
         private static double MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook(
             On.MoreSlugcats.SpeedRunTimer.orig_GetTimerTickIncrement orig, RainWorldGame game, double dt)
@@ -162,15 +189,53 @@ namespace Cordyceps
             }
             else _toggleInfoPanelHeld = false;
 
+            if (Input.GetKey(CordycepsSettings.ResetTickCounterKey.Value))
+            {
+                if (_resetTickCounterHeld) return;
+
+                _resetTickCounterHeld = true;
+                TickCount = 0;
+            }
+            else _resetTickCounterHeld = false;
+
+            if (Input.GetKey(CordycepsSettings.ToggleTickCounterPauseKey.Value))
+            {
+                if (_pauseTickCounterHeld) return;
+
+                _pauseTickCounterHeld = true;
+                TickCounterPaused = !TickCounterPaused;
+            }
+            else _pauseTickCounterHeld = false;
+
             if (Input.GetKey(CordycepsSettings.ToggleTickPauseKey.Value))
             {
-                if (_toggleTickPauseHeld || !CanAffectTickrate()) return;
+                if (_toggleTickPauseHeld) return;
 
                 _toggleTickPauseHeld = true;
+
+                if (WaitingForTick) return;
                 game.paused = !game.paused;
                 TickPauseOn = game.paused;
             }
             else _toggleTickPauseHeld = false;
+
+            // The tick advance function works as such: When the key is pressed, the "WaitingForTick" flag is set,
+            // Cordyceps releases the tick pause, and the game proceeds as normal until the next call to
+            // RainWorldGame.Update(), at which point a hook checks if WaitingForTick is set, pausing the game and
+            // unsetting it if it is. Effectively, the game automatically controls the tick pause while waiting
+            // for the next tick for you.
+            if (Input.GetKey(CordycepsSettings.TickAdvanceKey.Value))
+            {
+                if (_tickAdvanceHeld) return;
+
+                _tickAdvanceHeld = true;
+
+                if (!TickPauseOn) return;
+                WaitingForTick = true;
+                game.paused = false;
+                TickPauseOn = false;
+            }
+            else _tickAdvanceHeld = false;
 
             if (Input.GetKey(CordycepsSettings.ToggleTickrateCapKey.Value))
             {
