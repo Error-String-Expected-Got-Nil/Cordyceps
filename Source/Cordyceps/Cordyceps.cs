@@ -11,7 +11,7 @@ namespace Cordyceps
     {
         public const string PLUGIN_GUID = "Cordyceps";
         public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.3.3";
+        public const string PLUGIN_VERSION = "0.3.4";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
