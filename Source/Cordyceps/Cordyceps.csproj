@@ -92,6 +92,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Cordyceps.cs" />
+        <Compile Include="InfoPanel.cs" />
         <Compile Include="CordycepsSettings.cs" />
         <Compile Include="Properties\AssemblyInfo.cs"/>
     </ItemGroup>
