@@ -8,29 +8,29 @@ namespace Cordyceps
         private static readonly Color TextColor = new Color(255, 215, 36);
         private const float TextAlpha = 0.5f;
         
-        public static FLabel Header;
-        public static FLabel InfoLabel;
-        public static FLabel InfoLabelData;
-        public static FContainer Container;
-        public static float LineHeight;
-        public static Vector2 OriginalGrabMousePosition;
-        public static Vector2 OriginalGrabAnchorPosition;
-        public static bool PanelIsGrabbed;
+        private static FLabel _header;
+        private static FLabel _infoLabel;
+        private static FLabel _infoLabelData;
+        private static FContainer _container;
+        private static float _lineHeight;
+        private static Vector2 _originalGrabMousePosition;
+        private static Vector2 _originalGrabAnchorPosition;
+        private static bool _panelIsGrabbed;
 
-        public static Vector2 PanelAnchor = new Vector2(100.5f, 700f);
+        private static Vector2 _panelAnchor = new Vector2(100.5f, 700f);
         
-        public static float HeaderHeight => Header.text.Split('\n').Length * LineHeight;
-        public static float InfoLabelHeight => InfoLabel.text.Split('\n').Length * LineHeight;
-        public static Vector2 PanelBounds => new Vector2(280f, HeaderHeight + InfoLabelHeight);
+        private static float HeaderHeight => _header.text.Split('\n').Length * _lineHeight;
+        private static float InfoLabelHeight => _infoLabel.text.Split('\n').Length * _lineHeight;
+        private static Vector2 PanelBounds => new Vector2(280f, HeaderHeight + InfoLabelHeight);
 
         public static void Initialize()
         {
-            Container = new FContainer();
-            Futile.stage.AddChild(Container);
-            Container.SetPosition(Vector2.zero);
+            _container = new FContainer();
+            Futile.stage.AddChild(_container);
+            _container.SetPosition(Vector2.zero);
 
-            Header = new FLabel(RWCustom.Custom.GetFont(),
-                    $"Cordyceps v{Cordyceps.PLUGIN_VERSION}\nPress " +
+            _header = new FLabel(RWCustom.Custom.GetFont(),
+                    $"Cordyceps v{Cordyceps.PluginVersion}\nPress " +
                     $"[{CordycepsSettings.ToggleInfoPanelKey.Value.ToString()}] to toggle visibility of this " +
                     "panel.\n" + 
                     "You can also click and drag it to change its position.\n")
@@ -40,94 +40,94 @@ namespace Cordyceps
                 color = TextColor,
                 alignment = FLabelAlignment.Left
             };
-            Container.AddChild(Header);
+            _container.AddChild(_header);
 
-            InfoLabel = new FLabel(RWCustom.Custom.GetFont(), "")
+            _infoLabel = new FLabel(RWCustom.Custom.GetFont(), "")
             {
                 isVisible = true,
                 alpha = TextAlpha,
                 color = TextColor,
                 alignment = FLabelAlignment.Left
             };
-            Container.AddChild(InfoLabel);
+            _container.AddChild(_infoLabel);
 
-            InfoLabelData = new FLabel(RWCustom.Custom.GetFont(), "")
+            _infoLabelData = new FLabel(RWCustom.Custom.GetFont(), "")
             {
                 isVisible = true,
                 alpha = TextAlpha,
                 color = TextColor,
                 alignment = FLabelAlignment.Left
             };
-            Container.AddChild(InfoLabelData);
+            _container.AddChild(_infoLabelData);
 
-            LineHeight = Header.FontLineHeight * Header.scale;
+            _lineHeight = _header.FontLineHeight * _header.scale;
 
             UpdatePosition();
         }
 
         public static void Update()
         {
-            InfoLabel.text =
+            _infoLabel.text =
                 "Base Tickrate:\n" +
                 "Desired Tickrate:\n" +
                 "Tickrate Cap:\n" +
                 "Tick Pause:";
             
-            InfoLabelData.text =
+            _infoLabelData.text =
                 $"{Cordyceps.UnmodifiedTickrate}\n" +
                 $"{Cordyceps.DesiredTickrate}\n" +
                 (Cordyceps.TickrateCapOn ? "On" : "Off") + "\n" +
                 (Cordyceps.TickPauseOn ? "On" : "Off");
         }
 
-        public static void UpdatePosition()
+        private static void UpdatePosition()
         {
-            Header.SetPosition(PanelAnchor);
-            InfoLabel.SetPosition(PanelAnchor - new Vector2(0f, HeaderHeight));
-            InfoLabelData.SetPosition(PanelAnchor - new Vector2(-110f, HeaderHeight));
+            _header.SetPosition(_panelAnchor);
+            _infoLabel.SetPosition(_panelAnchor - new Vector2(0f, HeaderHeight));
+            _infoLabelData.SetPosition(_panelAnchor - new Vector2(-110f, HeaderHeight));
         }
 
         public static void UpdateVisibility()
         {
-            Container.isVisible = Cordyceps.ShowInfoPanel;
+            _container.isVisible = Cordyceps.ShowInfoPanel;
         }
 
         public static void Remove()
         {
-            Container.RemoveFromContainer();
-            Container.RemoveAllChildren();
-            Container = null;
+            _container.RemoveFromContainer();
+            _container.RemoveAllChildren();
+            _container = null;
         }
 
         public static void CheckGrab()
         {
-            if (Header == null || !Header.isVisible) return;
+            if (_header == null || !_header.isVisible) return;
             
             Vector2 mpos = Input.mousePosition;
             if (Input.GetMouseButton(0))
             {
-                if (!PanelIsGrabbed
-                    && mpos.x >= PanelAnchor.x
-                    && mpos.x <= PanelAnchor.x + PanelBounds.x
-                    && mpos.y <= PanelAnchor.y
-                    && mpos.y >= PanelAnchor.y - PanelBounds.y)
+                if (!_panelIsGrabbed
+                    && mpos.x >= _panelAnchor.x
+                    && mpos.x <= _panelAnchor.x + PanelBounds.x
+                    && mpos.y <= _panelAnchor.y
+                    && mpos.y >= _panelAnchor.y - PanelBounds.y)
                 {
-                    PanelIsGrabbed = true;
-                    OriginalGrabAnchorPosition = PanelAnchor;
-                    OriginalGrabMousePosition = mpos;
+                    _panelIsGrabbed = true;
+                    _originalGrabAnchorPosition = _panelAnchor;
+                    _originalGrabMousePosition = mpos;
                 }
 
-                if (!PanelIsGrabbed) return;
+                if (!_panelIsGrabbed) return;
                 
-                PanelAnchor = OriginalGrabAnchorPosition + mpos - OriginalGrabMousePosition;
+                _panelAnchor = _originalGrabAnchorPosition + mpos - _originalGrabMousePosition;
                 // Text is crisper if forced into alignment like this
-                PanelAnchor.x = Mathf.Floor(PanelAnchor.x) + 0.5f;
+                _panelAnchor.x = Mathf.Floor(_panelAnchor.x) + 0.5f;
                 
                 UpdatePosition();
             }
             else
             {
-                PanelIsGrabbed = false;
+                _panelIsGrabbed = false;
             }
         }
     }

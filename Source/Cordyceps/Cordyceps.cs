@@ -6,12 +6,12 @@ using UnityEngine;
 
 namespace Cordyceps
 {
-    [BepInPlugin(PLUGIN_GUID, PLUGIN_NAME, PLUGIN_VERSION)]
+    [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     public class Cordyceps : BaseUnityPlugin
     {
-        public const string PLUGIN_GUID = "Cordyceps";
-        public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.4.0";
+        public const string PluginGuid = "Cordyceps";
+        public const string PluginName = "Cordyceps TAS";
+        public const string PluginVersion = "0.4.1";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -31,8 +31,8 @@ namespace Cordyceps
         private static bool _decreaseTickrateHeld;
         private static bool _toggleTickPauseHeld;
 
-        // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones right now,
-        // but will update later hopefully to do things like check if in a game session.
+        // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones currently,
+        // but will likely update later to do things like check if the game/simulation is running too.
         public static bool CanAffectTickrate()
         {
             return TickrateCapOn;
@@ -164,7 +164,7 @@ namespace Cordyceps
 
             if (Input.GetKey(CordycepsSettings.ToggleTickPauseKey.Value))
             {
-                if (_toggleTickPauseHeld) return;
+                if (_toggleTickPauseHeld || !CanAffectTickrate()) return;
 
                 _toggleTickPauseHeld = true;
                 game.paused = !game.paused;
