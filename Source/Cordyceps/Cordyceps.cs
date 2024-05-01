@@ -11,7 +11,7 @@ namespace Cordyceps
     {
         public const string PLUGIN_GUID = "Cordyceps";
         public const string PLUGIN_NAME = "Cordyceps TAS";
-        public const string PLUGIN_VERSION = "0.3.1";
+        public const string PLUGIN_VERSION = "0.3.2";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -21,13 +21,20 @@ namespace Cordyceps
         private const float TickrateChangeInitialTime = 0.25f;
         private const float TickrateChangeHoldTickTime = 0.05f;
 
-        private static float _tickrateChangeStopwatch;
+        private static float _keyHoldStopwatch;
         
         private static bool _initialized;
         private static bool _toggleInfoPanelHeld;
         private static bool _toggleTickrateCapHeld;
         private static bool _increaseTickrateHeld;
         private static bool _decreaseTickrateHeld;
+
+        // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones right now,
+        // but will update later hopefully to do things like check if in a game session.
+        public static bool CanAffectTickrate()
+        {
+            return TickrateCapOn;
+        }
         
         private void OnEnable()
         {
@@ -47,6 +54,8 @@ namespace Cordyceps
                 On.RoomCamera.ctor += RoomCamera_ctor_Hook;
                 On.RoomCamera.ClearAllSprites += RoomCamera_ClearAllSprites_Hook;
                 On.RainWorldGame.GrafUpdate += RainWorldGame_GrafUpdate_Hook;
+                On.MoreSlugcats.SpeedRunTimer.GetTimerTickIncrement +=
+                    MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook;
                 
                 Log("Registering IL hooks");
                 IL.RainWorldGame.RawUpdate += RainWorldGame_RawUpdate_ILHook;
@@ -92,7 +101,7 @@ namespace Cordyceps
 
                     CheckInputs(dt);
 
-                    if (TickrateCapOn) game.framesPerSecond = Math.Min(DesiredTickrate, game.framesPerSecond);
+                    if (CanAffectTickrate()) game.framesPerSecond = Math.Min(DesiredTickrate, game.framesPerSecond);
                 }
                 catch (Exception e)
                 {
@@ -122,6 +131,25 @@ namespace Cordyceps
             InfoPanel.Update();
         }
 
+        private static double MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook(
+            On.MoreSlugcats.SpeedRunTimer.orig_GetTimerTickIncrement orig, RainWorldGame game, double dt)
+        {
+            var originalReturn = orig(game, dt);
+
+            try
+            {
+                if (!CanAffectTickrate()) return originalReturn;
+            
+                var timeDialationFactor = game.framesPerSecond / (double) UnmodifiedTickrate;
+                return originalReturn * timeDialationFactor;
+            }
+            catch (Exception e)
+            {
+                Log($"ERROR - Exception in MoreSlugcats.SpeedRunTimer.GetTimerTickIncrement hook: {e}");
+                return originalReturn;
+            }
+        }
+
         private static void CheckInputs(float dt)
         {
             if (Input.GetKey(CordycepsSettings.ToggleInfoPanelKey.Value))
@@ -147,12 +175,12 @@ namespace Cordyceps
             {
                 if (_increaseTickrateHeld)
                 {
-                    _tickrateChangeStopwatch += dt;
+                    _keyHoldStopwatch += dt;
 
-                    if (!(_tickrateChangeStopwatch >= TickrateChangeInitialTime + TickrateChangeHoldTickTime)) return;
+                    if (!(_keyHoldStopwatch >= TickrateChangeInitialTime + TickrateChangeHoldTickTime)) return;
 
                     DesiredTickrate = Math.Min(DesiredTickrate + 1, 40);
-                    _tickrateChangeStopwatch -= TickrateChangeHoldTickTime;
+                    _keyHoldStopwatch -= TickrateChangeHoldTickTime;
 
                     return;
                 }
@@ -166,12 +194,12 @@ namespace Cordyceps
             {
                 if (_decreaseTickrateHeld)
                 {
-                    _tickrateChangeStopwatch += dt;
+                    _keyHoldStopwatch += dt;
 
-                    if (!(_tickrateChangeStopwatch >= TickrateChangeInitialTime + TickrateChangeHoldTickTime)) return;
+                    if (!(_keyHoldStopwatch >= TickrateChangeInitialTime + TickrateChangeHoldTickTime)) return;
                     
                     DesiredTickrate = Math.Max(DesiredTickrate - 1, 1);
-                    _tickrateChangeStopwatch -= TickrateChangeHoldTickTime;
+                    _keyHoldStopwatch -= TickrateChangeHoldTickTime;
                     
                     return;
                 }
@@ -181,7 +209,7 @@ namespace Cordyceps
             }
             else _decreaseTickrateHeld = false;
 
-            _tickrateChangeStopwatch = 0f;
+            _keyHoldStopwatch = 0f;
         }
 
         private static void Log(string str) { Debug.Log($"[Cordyceps] {str}"); }
