@@ -4,6 +4,6 @@
     "version": "0.5.0",
     "target_game_version": "v1.9.15b",
     "authors": "Error: String Expected, Got Nil",
-    "description": "TAS mod which will allow for artifically reducing the game's tickrate, or pausing it entirely. When it's done, anyways. Will hopefully also support recording in real time with OBS even while playing in slow motion.",
+    "description": "TAS mod which allows manual control over the game's tickrate, including pausing completely and advancing a single tick at a time. Currently planning to also make some integration with OBS to allow for recording in real time while playing in slow motion.",
     "checksum_override_version": false
 }
