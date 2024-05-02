@@ -4,3 +4,6 @@ Source/Cordyceps/obj/Debug/Cordyceps.csproj.AssemblyReference.cache
 /Source/Cordyceps/.idea
 Source/Cordyceps/Cordyceps.sln.DotSettings.user
 plugins/Cordyceps.pdb
+/Source/Cordyceps/packages
+Source/Cordyceps/packages.config
+Source/Cordyceps/App.config

@@ -31,14 +31,9 @@ namespace Cordyceps
         public static readonly Configurable<KeyCode> TickAdvanceKey =
             Instance.config.Bind("TickAdvanceKey", KeyCode.Slash, new ConfigurableInfo(
                 "Press to advance a single game tick. Only works while tick pause is active. Any inputs " +
-                "held when frame is advanced will be registered on the frame you advance to. Please note that, for " +
-                "technical reasons, this works best when the tickrate cap is on and set to a lower value."));
+                "held when tick is advanced will be registered on the frame you advance to."));
         
         // Second column
-        public static readonly Configurable<bool> ShowTickCounter =
-            Instance.config.Bind("ShowTickCounter", true, new ConfigurableInfo(
-                "Toggle whether a tick counter should be added to the info panel."));
-
         public static readonly Configurable<KeyCode> ResetTickCounterKey =
             Instance.config.Bind("ResetTickCounterKey", KeyCode.Semicolon, new ConfigurableInfo(
                 "Press to reset tick counter to 0."));
@@ -46,6 +41,10 @@ namespace Cordyceps
         public static readonly Configurable<KeyCode> ToggleTickCounterPauseKey =
             Instance.config.Bind("ToggleTickCounterPauseKey", KeyCode.Quote, new ConfigurableInfo(
                 "Press to toggle pausing or unpausing the tick counter."));
+        
+        public static readonly Configurable<bool> ShowTickCounter =
+            Instance.config.Bind("ShowTickCounter", true, new ConfigurableInfo(
+                "Toggle whether the tick counter should be added to the info panel."));
 
         public override void Initialize()
         {
@@ -100,7 +99,12 @@ namespace Cordyceps
                 new OpLabel(300f, 505f, "Show Tick Counter")
                     {description = ShowTickCounter.info.description},
                 new OpCheckBox(ShowTickCounter, new Vector2(450f, 500f))
-                    {description =  ShowTickCounter.info.description}
+                    {description =  ShowTickCounter.info.description},
+                
+                // Footer
+                new OpLabelLong(new Vector2(10f, 350f), new Vector2(570f, 0f), 
+                    "Please see the README included in the mod's directory for more detailed information on " +
+                    "the functions of this mod!")
             });
         }
     }
