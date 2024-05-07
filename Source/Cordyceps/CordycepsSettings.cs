@@ -5,45 +5,45 @@ namespace Cordyceps
 {
     internal class CordycepsSettings : OptionInterface
     {
-        private static readonly CordycepsSettings Instance = new CordycepsSettings();
+        public static readonly CordycepsSettings Instance = new CordycepsSettings();
 
         // First column
-        public static readonly Configurable<KeyCode> ToggleInfoPanelKey =
-            Instance.config.Bind("ToggleInfoPanelKey", KeyCode.M, new ConfigurableInfo(
+        public static Configurable<KeyCode> ToggleInfoPanelKey =
+            Instance.config.Bind(nameof(ToggleInfoPanelKey), KeyCode.M, new ConfigurableInfo(
                 "Press to toggle visibility of info panel."));
 
-        public static readonly Configurable<KeyCode> ToggleTickrateCapKey =
-            Instance.config.Bind("ToggleTickrateCapyKey", KeyCode.Comma, new ConfigurableInfo(
+        public static Configurable<KeyCode> ToggleTickrateCapKey =
+            Instance.config.Bind(nameof(ToggleTickrateCapKey), KeyCode.Comma, new ConfigurableInfo(
                 "Press to toggle tickrate cap on/off."));
 
-        public static readonly Configurable<KeyCode> IncreaseTickrateCapKey =
-            Instance.config.Bind("IncreaseTickrateCapKey", KeyCode.Equals, new ConfigurableInfo(
+        public static Configurable<KeyCode> IncreaseTickrateCapKey =
+            Instance.config.Bind(nameof(IncreaseTickrateCapKey), KeyCode.Equals, new ConfigurableInfo(
                 "Press or hold to increase tickrate cap."));
 
-        public static readonly Configurable<KeyCode> DecreaseTickrateCapKey =
-            Instance.config.Bind("DecreaseTickrateCapKey", KeyCode.Minus, new ConfigurableInfo(
+        public static Configurable<KeyCode> DecreaseTickrateCapKey =
+            Instance.config.Bind(nameof(DecreaseTickrateCapKey), KeyCode.Minus, new ConfigurableInfo(
                 "Press or hold to decrease tickrate cap."));
 
-        public static readonly Configurable<KeyCode> ToggleTickPauseKey =
-            Instance.config.Bind("ToggleTickPauseKey", KeyCode.Period, new ConfigurableInfo(
+        public static Configurable<KeyCode> ToggleTickPauseKey =
+            Instance.config.Bind(nameof(ToggleTickPauseKey), KeyCode.Period, new ConfigurableInfo(
                 "Press to toggle game pause without showing pause menu."));
 
-        public static readonly Configurable<KeyCode> TickAdvanceKey =
-            Instance.config.Bind("TickAdvanceKey", KeyCode.Slash, new ConfigurableInfo(
+        public static Configurable<KeyCode> TickAdvanceKey =
+            Instance.config.Bind(nameof(TickAdvanceKey), KeyCode.Slash, new ConfigurableInfo(
                 "Press to advance a single game tick. Only works while tick pause is active. Any inputs " +
                 "held when tick is advanced will be registered on the frame you advance to."));
         
         // Second column
-        public static readonly Configurable<KeyCode> ResetTickCounterKey =
-            Instance.config.Bind("ResetTickCounterKey", KeyCode.Semicolon, new ConfigurableInfo(
+        public static Configurable<KeyCode> ResetTickCounterKey =
+            Instance.config.Bind(nameof(ResetTickCounterKey), KeyCode.Semicolon, new ConfigurableInfo(
                 "Press to reset tick counter to 0."));
 
-        public static readonly Configurable<KeyCode> ToggleTickCounterPauseKey =
-            Instance.config.Bind("ToggleTickCounterPauseKey", KeyCode.Quote, new ConfigurableInfo(
+        public static Configurable<KeyCode> ToggleTickCounterPauseKey =
+            Instance.config.Bind(nameof(ToggleTickCounterPauseKey), KeyCode.Quote, new ConfigurableInfo(
                 "Press to toggle pausing or unpausing the tick counter."));
         
-        public static readonly Configurable<bool> ShowTickCounter =
-            Instance.config.Bind("ShowTickCounter", true, new ConfigurableInfo(
+        public static Configurable<bool> ShowTickCounter =
+            Instance.config.Bind(nameof(ShowTickCounter), true, new ConfigurableInfo(
                 "Toggle whether the tick counter should be added to the info panel."));
 
         public override void Initialize()

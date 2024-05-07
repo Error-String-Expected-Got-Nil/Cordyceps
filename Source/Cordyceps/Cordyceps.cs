@@ -11,7 +11,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.5.1";
+        public const string PluginVersion = "0.5.2";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -70,7 +70,7 @@ namespace Cordyceps
                 IL.RainWorldGame.RawUpdate += RainWorldGame_RawUpdate_ILHook;
 
                 Log("Registering settings");
-                MachineConnector.SetRegisteredOI("Cordyceps", new CordycepsSettings());
+                MachineConnector.SetRegisteredOI("Cordyceps", CordycepsSettings.Instance);
                 
                 _initialized = true;
                 Log("Initialized successfully");
