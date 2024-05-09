@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Text.Json;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -73,7 +75,61 @@ namespace Cordyceps
                 MachineConnector.SetRegisteredOI("Cordyceps", CordycepsSettings.Instance);
                 
                 _initialized = true;
-                Log("Initialized successfully");
+
+                if (!CordycepsSettings.ObsIntegrationOn.Value) return;
+                
+                Log("Initializing OBS websocket client");
+                    
+                // OBS websocket port and password are stored in a config file since Rain World settings aren't
+                // really made for entering arbitrary text/numbers
+                var configFilepath = Application.persistentDataPath + @"\ModConfigs\Cordyceps\" +
+                                     "websocket_config.json";
+
+                var port = 4455;
+                var password = "";
+                var configReadSuccessful = true;
+
+                if (File.Exists(configFilepath))
+                {
+                    try
+                    {
+                        var config = JsonDocument.Parse(File.ReadAllText(configFilepath));
+
+                        password = config.RootElement.GetProperty("password").GetString();
+                        port = config.RootElement.GetProperty("port").GetInt32();
+                    }
+                    catch (Exception e)
+                    {
+                        Log($"ERROR - Exception while attempting to read OBS websocket JSON config: {e}");
+                        configReadSuccessful = false;
+                    }
+                }
+                else
+                {
+                    Log("Failed to read OBS websocket JSON config, file did not exist; attempting to create " +
+                        "with default values (path should be: %appdata%/../LocalLow/Videocult/Rain World/ModConfigs/" +
+                        "Cordyceps/websocket_config.json");
+                    const string defaultSettingsJson =
+                        "{\n" +
+                        "    \"password\": \"\",\n" +
+                        "    \"port\": 4455\n" +
+                        "}\n";
+
+                    Directory.CreateDirectory(Application.persistentDataPath + @"\ModConfigs\Cordyceps");
+                        
+                    File.WriteAllText(configFilepath, defaultSettingsJson);
+                    configReadSuccessful = false;
+                }
+
+                if (!configReadSuccessful)
+                {
+                    Log("Could not read OBS websocket JSON config, assuming no password and default port 4455");
+                    port = 4455;
+                    password = "";
+                }
+                
+                ObsIntegration.InitializeClient(port, password);
+                ObsIntegration.AttemptConnection();
             }
             catch (Exception e)
             {

@@ -45,12 +45,24 @@ namespace Cordyceps
         public static Configurable<bool> ShowTickCounter =
             Instance.config.Bind(nameof(ShowTickCounter), true, new ConfigurableInfo(
                 "Toggle whether the tick counter should be added to the info panel."));
+        
+        // OBS Websocket Page
+        // First column
+        
+        // Second column
+        public static Configurable<bool> ObsIntegrationOn =
+            Instance.config.Bind(nameof(ObsIntegrationOn), true, new ConfigurableInfo(
+                "Toggle to enable/disable OBS integration entirely."));
 
+        public static Configurable<int> ObsWebsocketPort =
+            Instance.config.Bind(nameof(ObsWebsocketPort), 4455, new ConfigurableInfo(
+                "Port that the OBS websocket server should be open on. OBS has it set to 4455 by default."));
+        
         public override void Initialize()
         {
             base.Initialize();
             
-            Tabs = new[] { new OpTab(this, "Settings") };
+            Tabs = new[] { new OpTab(this, "Settings"), new OpTab(this, "OBS Integration") };
             
             Tabs[0].AddItems(new UIelement[]
             {
@@ -105,6 +117,21 @@ namespace Cordyceps
                 new OpLabelLong(new Vector2(10f, 350f), new Vector2(570f, 0f), 
                     "Please see the README included in the mod's directory for more detailed information on " +
                     "the functions of this mod!")
+            });
+
+            // Will need this for later
+            ObsIntegrationOn.OnChange += () =>
+            {
+                // Callback is triggered whenever settings are applied and the checkbox's value is changed
+            };
+            
+            Tabs[1].AddItems(new UIelement[]
+            {
+                // Second column
+                new OpLabel(300f, 575f, "Toggle OBS Integration")
+                    {description = ObsIntegrationOn.info.description},
+                new OpCheckBox(ObsIntegrationOn, new Vector2(450f, 570f))
+                    {description = ObsIntegrationOn.info.description}
             });
         }
     }
