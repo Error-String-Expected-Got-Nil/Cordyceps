@@ -13,7 +13,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.5.2";
+        public const string PluginVersion = "0.6.0";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -108,7 +108,7 @@ namespace Cordyceps
                 {
                     Log("Failed to read OBS websocket JSON config, file did not exist; attempting to create " +
                         "with default values (path should be: %appdata%/../LocalLow/Videocult/Rain World/ModConfigs/" +
-                        "Cordyceps/websocket_config.json");
+                        "Cordyceps/websocket_config.json)");
                     const string defaultSettingsJson =
                         "{\n" +
                         "    \"password\": \"\",\n" +
@@ -116,8 +116,8 @@ namespace Cordyceps
                         "}\n";
 
                     Directory.CreateDirectory(Application.persistentDataPath + @"\ModConfigs\Cordyceps");
-                        
                     File.WriteAllText(configFilepath, defaultSettingsJson);
+                    
                     configReadSuccessful = false;
                 }
 
