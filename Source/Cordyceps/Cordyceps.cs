@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using ObsWebSocket.Net.Protocol.Requests;
 using UnityEngine;
 
 namespace Cordyceps
@@ -39,6 +41,11 @@ namespace Cordyceps
         private static bool _resetTickCounterHeld;
         private static bool _pauseTickCounterHeld;
 
+        private static bool _startRecordingHeld;
+        private static bool _stopRecordingHeld;
+        private static bool _enableRealtimeModeHeld;
+        private static bool _disableRealtimeModeHeld;
+
         // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones currently,
         // but will likely update later to do things like check if the game/simulation is running too.
         public static bool CanAffectTickrate()
@@ -67,6 +74,7 @@ namespace Cordyceps
                 On.RainWorldGame.Update += RainWorldGame_Update_Hook;
                 On.MoreSlugcats.SpeedRunTimer.GetTimerTickIncrement +=
                     MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook;
+                On.MainLoopProcess.RawUpdate += MainLoopProcess_RawUpdate_Hook;
                 
                 Log("Registering IL hooks");
                 IL.RainWorldGame.RawUpdate += RainWorldGame_RawUpdate_ILHook;
@@ -214,6 +222,27 @@ namespace Cordyceps
             }
         }
 
+        private static void MainLoopProcess_RawUpdate_Hook(On.MainLoopProcess.orig_RawUpdate orig, 
+            MainLoopProcess self, float dt)
+        {
+            try
+            {
+                if (!CordycepsSettings.ObsIntegrationOn.Value)
+                {
+                    orig(self, dt);
+                    return;
+                }
+                
+                CheckInputsObs();
+
+                orig(self, dt);
+            }
+            catch (Exception e)
+            {
+                Log($"ERROR - Exception in MainLoopProcess.RawUpdate hook: {e}");
+            }
+        }
+
         private static double MoreSlugcats_SpeedRunTimer_GetTimerTickIncrement_Hook(
             On.MoreSlugcats.SpeedRunTimer.orig_GetTimerTickIncrement orig, RainWorldGame game, double dt)
         {
@@ -341,6 +370,46 @@ namespace Cordyceps
             else _decreaseTickrateHeld = false;
 
             _keyHoldStopwatch = 0f;
+        }
+
+        private static void CheckInputsObs()
+        {
+            
+            if (Input.GetKey(CordycepsSettings.StartRecordingKey.Value))
+            {
+                if (_startRecordingHeld) return;
+
+                _startRecordingHeld = true;
+                ObsIntegration.StartRecording();
+            }
+            else _startRecordingHeld = false;
+            
+            if (Input.GetKey(CordycepsSettings.StopRecordingKey.Value))
+            {
+                if (_stopRecordingHeld) return;
+
+                _stopRecordingHeld = true;
+                ObsIntegration.StopRecording();
+            }
+            else _stopRecordingHeld = false;
+            
+            if (Input.GetKey(CordycepsSettings.EnableRealtimeModeKey.Value))
+            {
+                if (_enableRealtimeModeHeld) return;
+
+                _enableRealtimeModeHeld = true;
+                ObsIntegration.SetRealtimeMode(true);
+            }
+            else _enableRealtimeModeHeld = false;
+            
+            if (Input.GetKey(CordycepsSettings.DisableRealtimeModeKey.Value))
+            {
+                if (_disableRealtimeModeHeld) return;
+
+                _disableRealtimeModeHeld = true;
+                ObsIntegration.SetRealtimeMode(false);
+            }
+            else _disableRealtimeModeHeld = false;
         }
 
         private static void Log(string str) { Debug.Log($"[Cordyceps] {str}"); }

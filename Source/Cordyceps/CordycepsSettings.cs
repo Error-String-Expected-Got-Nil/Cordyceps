@@ -48,15 +48,26 @@ namespace Cordyceps
         
         // OBS Websocket Page
         // First column
+        public static Configurable<KeyCode> StartRecordingKey =
+            Instance.config.Bind(nameof(StartRecordingKey), KeyCode.R, new ConfigurableInfo(
+                "Press to start recording."));
+        
+        public static Configurable<KeyCode> StopRecordingKey =
+            Instance.config.Bind(nameof(StopRecordingKey), KeyCode.T, new ConfigurableInfo(
+                "Press to stop recording."));
+        
+        public static Configurable<KeyCode> EnableRealtimeModeKey =
+            Instance.config.Bind(nameof(EnableRealtimeModeKey), KeyCode.Y, new ConfigurableInfo(
+                "Press to make recording capture in real time instead of in accord with tickrate."));
+        
+        public static Configurable<KeyCode> DisableRealtimeModeKey =
+            Instance.config.Bind(nameof(DisableRealtimeModeKey), KeyCode.U, new ConfigurableInfo(
+                "Press to make recording capture in accord with tickrate instead of real time."));
         
         // Second column
         public static Configurable<bool> ObsIntegrationOn =
             Instance.config.Bind(nameof(ObsIntegrationOn), true, new ConfigurableInfo(
                 "Toggle to enable/disable OBS integration entirely."));
-
-        public static Configurable<int> ObsWebsocketPort =
-            Instance.config.Bind(nameof(ObsWebsocketPort), 4455, new ConfigurableInfo(
-                "Port that the OBS websocket server should be open on. OBS has it set to 4455 by default."));
         
         public override void Initialize()
         {
@@ -127,6 +138,27 @@ namespace Cordyceps
             
             Tabs[1].AddItems(new UIelement[]
             {
+                // First column
+                new OpLabel(10f, 575f, "Start Recording")
+                    {description = StartRecordingKey.info.description},
+                new OpKeyBinder(StartRecordingKey, new Vector2(150f, 570f), 
+                    new Vector2(120f, 30f)) {description = StartRecordingKey.info.description},
+                
+                new OpLabel(10f, 540f, "Stop Recording")
+                    {description = StopRecordingKey.info.description},
+                new OpKeyBinder(StopRecordingKey, new Vector2(150f, 535f), 
+                    new Vector2(120f, 30f)) {description = StopRecordingKey.info.description},
+                
+                new OpLabel(10f, 505f, "Enable Real Time Mode")
+                    {description = EnableRealtimeModeKey.info.description},
+                new OpKeyBinder(EnableRealtimeModeKey, new Vector2(150f, 500f), 
+                    new Vector2(120f, 30f)) {description = EnableRealtimeModeKey.info.description},
+                
+                new OpLabel(10f, 470f, "Disable Real Time Mode")
+                    {description = DisableRealtimeModeKey.info.description},
+                new OpKeyBinder(DisableRealtimeModeKey, new Vector2(150f, 465f), 
+                    new Vector2(120f, 30f)) {description = DisableRealtimeModeKey.info.description},
+                
                 // Second column
                 new OpLabel(300f, 575f, "Toggle OBS Integration")
                     {description = ObsIntegrationOn.info.description},

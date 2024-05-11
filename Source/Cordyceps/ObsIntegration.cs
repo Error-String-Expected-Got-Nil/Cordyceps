@@ -6,25 +6,40 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ObsWebSocket.Net;
 using ObsWebSocket.Net.Protocol.Enums;
 using UnityEngine;
 
+using static Cordyceps.RecordStatus;
+
 namespace Cordyceps
 {
-    public class ObsIntegration
+    public enum RecordStatus
+    {
+        Stopped,
+        Stopping,
+        Starting,
+        Started
+    }
+
+    public static class ObsIntegration
     {
         public static bool Connected { get; private set; }
-        public static bool Recording { get; private set; }
+        public static RecordStatus RecordStatus { get; private set; } = Stopped;
 
         private static ObsWebSocketClient _client;
         private static bool _connecting;
 
+        private static readonly EventWaitHandle RecordStartWaitHandler = new EventWaitHandle(false, 
+            EventResetMode.AutoReset);
+        private static bool _recordStartSuccess;
+
         public static void InitializeClient(int port, string password)
         {
             if (_client != null) return;
-            
+
             // Technically you *could* use something other than the loopback address as the IP, but there's no
             // situation I can think of in which you would ever want to, at least in this case.
             _client = new ObsWebSocketClient("127.0.0.1", port, password);
@@ -33,7 +48,7 @@ namespace Cordyceps
             {
                 Log("Connected to OBS, attempting to get Cordyceps-stalk status");
 
-                var response = _client.CallVendorRequest("cordyceps_stalk", 
+                var response = _client.CallVendorRequest("cordyceps_stalk",
                     "status", new Dictionary<string, object>());
 
                 await response;
@@ -41,7 +56,7 @@ namespace Cordyceps
                 object active = null;
                 var gotStatus = response.Result?.ResponseData.TryGetValue("active", out active);
 
-                if ((gotStatus ?? false) && (((JsonElement?) active)?.GetBoolean() ?? false))
+                if ((gotStatus ?? false) && (((JsonElement?)active)?.GetBoolean() ?? false))
                 {
                     Log("Cordyceps-stalk presence verified");
                     Connected = true;
@@ -54,8 +69,26 @@ namespace Cordyceps
             _client.OnConnectionFailed += e =>
             {
                 Log($"Failed to connect to OBS, reason: {e.Message}");
-                
+
                 _connecting = false;
+            };
+
+            _client.OnVendorEvent += ve =>
+            {
+                if (ve == null) return;
+                if (ve.VendorName != "cordyceps_stalk") return;
+
+                switch (ve.EventType)
+                {
+                    case "record_start_success":
+                        _recordStartSuccess = true;
+                        RecordStartWaitHandler.Set();
+                        break;
+                    case "record_start_fail":
+                        _recordStartSuccess = false;
+                        RecordStartWaitHandler.Set();
+                        break;
+                }
             };
         }
 
@@ -70,13 +103,83 @@ namespace Cordyceps
             _client.Connect(EventSubscription.Vendors);
         }
 
-        public static async void StartRecording()
+        // Returns whether or not recording was started successfully
+        // Returns false if recording was already started, starting, or being stopped
+        public static async Task<bool> StartRecording()
         {
-            if (!CanSendRequest()) return;
+            if (!CanSendRequest() || RecordStatus != Stopped) return false;
+
+            RecordStatus = Starting;
 
             await UpdateEncoderSettings();
             
-            // NOT FINISHED
+            var response = _client.CallVendorRequest("cordyceps_stalk", 
+                "start_recording", new Dictionary<string, object>());
+            
+            await response;
+
+            object success = null;
+            var gotSuccess = response.Result?.ResponseData.TryGetValue("success", out success);
+            
+            if (!((gotSuccess ?? false) && (((JsonElement?)success)?.GetBoolean() ?? false)))
+            {
+                Log("ERROR - Cordyceps-stalk output failed to start its initialization thread. This should never " +
+                    "happen, something is quite wrong!");
+                RecordStatus = Stopped;
+                return false;
+            }
+            
+            // The weird combination of async/await and this event wait handle is because the Cordyceps-stalk OBS
+            // output uses a thread to start itself up. Unless that thread fails to start, the return of 
+            // obs_output_start() will always be true, and the output will signal failure later if something goes
+            // wrong. So here we're waiting for an event from Cordyceps-stalk saying whether it actually started.
+            var recordStatusEvent = Task.Run(RecordStartWaitHandler.WaitOne);
+            if (await Task.WhenAny(recordStatusEvent, Task.Delay(2000)) != recordStatusEvent)
+            {
+                Log("ERROR - Cordyceps timed out on waiting for Cordyceps-stalk output to initialize. This " +
+                    "should never happen, something is quite wrong!");
+                RecordStatus = Stopped;
+                return false;
+            }
+
+            if (!_recordStartSuccess)
+            {
+                Log("WARN - Cordyceps-stalk output failed to start, please see the OBS log for more details " +
+                    "(should be located at %appdata%/obs-studio/logs, check the most recent one)");
+                RecordStatus = Stopped;
+                return false;
+            }
+
+            Log("Recording started");
+            RecordStatus = Started;
+            return true;
+        }
+
+        // Returns false if not able to send a request right now or recording status doesn't permit stopping, returns
+        // true otherwise, since stopping an output should never fail
+        public static async Task<bool> StopRecording()
+        {
+            if (!CanSendRequest() || RecordStatus != Started) return false;
+
+            RecordStatus = Stopping;
+
+            await _client.CallVendorRequest("cordyceps_stalk", "stop_recording",
+                new Dictionary<string, object>());
+
+            Log("Recording stopped");
+            RecordStatus = Stopped;
+            return true;
+        }
+
+        public static void SetRealtimeMode(bool value)
+        {
+            if (!CanSendRequest() || RecordStatus != Started) return;
+
+            _client.CallVendorRequest("cordyceps_stalk", "set_realtime_mode",
+                new Dictionary<string, object>
+                {
+                    {"value", value}
+                });
         }
 
         private static Task UpdateEncoderSettings()
@@ -136,7 +239,7 @@ namespace Cordyceps
                     "\nlibx264 codec preset: veryfast");
                 dirpath = "C:/cordyceps/";
                 gopSize = 120;
-                crf = 23f;
+                crf = 23.0;
                 preset = "veryfast";
             }
 
