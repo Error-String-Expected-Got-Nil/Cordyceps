@@ -21,9 +21,7 @@ namespace Cordyceps
 
         private static Vector2 _panelAnchor = new Vector2(100.5f, 700f);
         
-        // Couldn't get this to align properly so I just added an extra +2.5 to the number of lines on the
-        // HeaderHeight. The grab bounds aren't quite right now but it works, so too bad!
-        private static float HeaderHeight => (Regex.Matches(_header.text, "\n").Count + 3.5f) * _lineHeight;
+        private static float HeaderHeight => (Regex.Matches(_header.text, "\n").Count + 1) * _lineHeight;
         private static float InfoLabelHeight => (Regex.Matches(_infoLabel.text, "\n").Count + 1) 
                                                 * _lineHeight;
         private static Vector2 PanelBounds => new Vector2(280f, HeaderHeight + InfoLabelHeight);
@@ -92,11 +90,13 @@ namespace Cordyceps
             _infoLabel.text +=
                 "\n \n-=- OBS Integration -=-" +
                 "\nRecord time is approximate." +
+                "\nConnection Status: " +
                 "\nRecord Status:" +
                 "\nRecord Time:";
 
             _infoLabelData.text +=
                 "\n \n \n" +
+                "\n" + (ObsIntegration.Connected ? "Connected" : "Disconnected") +
                 $"\n{ObsIntegration.RecordStatus.ToString()}" +
                 $"\n{FormatTime(ObsIntegration.RecordTime)}";
         }
@@ -104,8 +104,8 @@ namespace Cordyceps
         private static void UpdatePosition()
         {
             _header.SetPosition(_panelAnchor);
-            _infoLabel.SetPosition(_panelAnchor - new Vector2(0f, HeaderHeight));
-            _infoLabelData.SetPosition(_panelAnchor - new Vector2(-110f, HeaderHeight));
+            _infoLabel.SetPosition(_panelAnchor - new Vector2(0f, HeaderHeight * 2f));
+            _infoLabelData.SetPosition(_panelAnchor - new Vector2(-110f, HeaderHeight * 2f));
         }
 
         public static void UpdateVisibility()

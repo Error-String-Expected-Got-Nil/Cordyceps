@@ -37,11 +37,17 @@ namespace Cordyceps
 
         private static ObsWebSocketClient _client;
         private static bool _connecting;
+        private static bool _intentionalDisconnect;
+
+        public static bool HasClient => _client != null;
 
         private static readonly EventWaitHandle RecordStartWaitHandle = new EventWaitHandle(false, 
             EventResetMode.AutoReset);
 
         private static readonly EventWaitHandle ReconnectWaitHandle = new EventWaitHandle(false,
+            EventResetMode.AutoReset);
+
+        private static readonly EventWaitHandle DisconnectWaitHandle = new EventWaitHandle(false,
             EventResetMode.AutoReset);
         
         private static bool _recordStartSuccess;
@@ -87,6 +93,14 @@ namespace Cordyceps
 
             _client.OnClosed += async () =>
             {
+                if (_intentionalDisconnect)
+                {
+                    Log("Cordyceps disconnected intentionally.");
+                    DisconnectWaitHandle.Set();
+                    _intentionalDisconnect = false;
+                    return;
+                }
+                
                 Log("WARN - Connection closed unexpectedly, attempting to reconnect");
 
                 DisconnectPause = true;
@@ -105,7 +119,6 @@ namespace Cordyceps
                 await Task.WhenAny(reconnectEvent, Task.Delay(2000));
 
                 if (Connected) Log("Reconnection successful");
-                // TODO: Add system for re-initializing and intentionally disconnecting the client
                 else
                 {
                     Log("Reconnection unsuccessful! Please restart OBS and re-initialize the client before " +
@@ -137,6 +150,59 @@ namespace Cordyceps
             };
         }
 
+        public static (int, string) GetClientConfig()
+        {
+            // OBS websocket port and password are stored in a config file since Rain World settings aren't
+            // really made for entering arbitrary text/numbers
+            var configFilepath = Application.persistentDataPath + @"\ModConfigs\Cordyceps\" +
+                                 "websocket_config.json";
+            
+            var port = 4455;
+            var password = "";
+            var configReadSuccessful = true;
+            
+            if (File.Exists(configFilepath))
+            {
+                try
+                {
+                    var config = JsonDocument.Parse(File.ReadAllText(configFilepath));
+            
+                    password = config.RootElement.GetProperty("password").GetString();
+                    port = config.RootElement.GetProperty("port").GetInt32();
+                }
+                catch (Exception e)
+                {
+                    Log($"ERROR - Exception while attempting to read OBS websocket JSON config: {e}");
+                    configReadSuccessful = false;
+                }
+            }
+            else
+            {
+                Log("Failed to read OBS websocket JSON config, file did not exist; attempting to create " +
+                    "with default values (path should be: %appdata%/../LocalLow/Videocult/Rain World/ModConfigs/" +
+                    "Cordyceps/websocket_config.json)");
+                const string defaultSettingsJson =
+                    "{\n" +
+                    "    \"password\": \"\",\n" +
+                    "    \"port\": 4455\n" +
+                    "}\n";
+            
+                Directory.CreateDirectory(Application.persistentDataPath + @"\ModConfigs\Cordyceps");
+                File.WriteAllText(configFilepath, defaultSettingsJson);
+                
+                configReadSuccessful = false;
+            }
+            
+            if (!configReadSuccessful)
+            {
+                Log("Could not read OBS websocket JSON config, assuming no password and default port 4455");
+                port = 4455;
+                password = "";
+            }
+            
+            return (port, password);
+        }
+
         public static void AttemptConnection()
         {
             if (_client == null) return;
@@ -146,6 +212,26 @@ namespace Cordyceps
             _connecting = true;
 
             _client.Connect(EventSubscription.Vendors);
+        }
+
+        public static async Task<bool> Disconnect()
+        {
+            if (!CanSendRequest()) return false;
+
+            DisconnectWaitHandle.Reset();
+            _intentionalDisconnect = true;
+            _client.Close();
+
+            var disconnectEvent = Task.Run(DisconnectWaitHandle.WaitOne);
+            if (await Task.WhenAny(disconnectEvent, Task.Delay(2000)) != disconnectEvent)
+            {
+                Log("ERROR - Cordyceps timed out on waiting for disconnect event. This should never happen, " +
+                    "something is quite wrong!");
+                return false;
+            }
+            
+            Log("Disconnected successfully.");
+            return true;
         }
 
         // Returns whether or not recording was started successfully

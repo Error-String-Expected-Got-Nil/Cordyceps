@@ -41,6 +41,7 @@ namespace Cordyceps
 
         private static bool _startRecordingHeld;
         private static bool _stopRecordingHeld;
+        private static bool _attemptConnectionHeld;
 
         private static bool _inMenu;
         private static double _frameRequestCounter;
@@ -86,55 +87,8 @@ namespace Cordyceps
                 if (!CordycepsSettings.ObsIntegrationOn.Value) return;
                 
                 Log("Initializing OBS websocket client");
-                    
-                // OBS websocket port and password are stored in a config file since Rain World settings aren't
-                // really made for entering arbitrary text/numbers
-                var configFilepath = Application.persistentDataPath + @"\ModConfigs\Cordyceps\" +
-                                     "websocket_config.json";
 
-                var port = 4455;
-                var password = "";
-                var configReadSuccessful = true;
-
-                if (File.Exists(configFilepath))
-                {
-                    try
-                    {
-                        var config = JsonDocument.Parse(File.ReadAllText(configFilepath));
-
-                        password = config.RootElement.GetProperty("password").GetString();
-                        port = config.RootElement.GetProperty("port").GetInt32();
-                    }
-                    catch (Exception e)
-                    {
-                        Log($"ERROR - Exception while attempting to read OBS websocket JSON config: {e}");
-                        configReadSuccessful = false;
-                    }
-                }
-                else
-                {
-                    Log("Failed to read OBS websocket JSON config, file did not exist; attempting to create " +
-                        "with default values (path should be: %appdata%/../LocalLow/Videocult/Rain World/ModConfigs/" +
-                        "Cordyceps/websocket_config.json)");
-                    const string defaultSettingsJson =
-                        "{\n" +
-                        "    \"password\": \"\",\n" +
-                        "    \"port\": 4455\n" +
-                        "}\n";
-
-                    Directory.CreateDirectory(Application.persistentDataPath + @"\ModConfigs\Cordyceps");
-                    File.WriteAllText(configFilepath, defaultSettingsJson);
-                    
-                    configReadSuccessful = false;
-                }
-
-                if (!configReadSuccessful)
-                {
-                    Log("Could not read OBS websocket JSON config, assuming no password and default port 4455");
-                    port = 4455;
-                    password = "";
-                }
-                
+                var (port, password) = ObsIntegration.GetClientConfig();
                 ObsIntegration.InitializeClient(port, password);
                 ObsIntegration.AttemptConnection();
             }
@@ -243,7 +197,7 @@ namespace Cordyceps
                     orig(self, dt);
                     return;
                 }
-
+                
                 if (_recordingStarted != null)
                 {
                     // Have to use null-coalescing since for some reason Rider doesn't realize _recordingStarted can't
@@ -433,6 +387,15 @@ namespace Cordyceps
                 ObsIntegration.StopRecording();
             }
             else _stopRecordingHeld = false;
+            
+            if (Input.GetKey(CordycepsSettings.AttemptConnectionKey.Value))
+            {
+                if (_attemptConnectionHeld) return;
+
+                _attemptConnectionHeld = true;
+                ObsIntegration.AttemptConnection();
+            }
+            else _attemptConnectionHeld = false;
         }
 
         private static void Log(string str) { Debug.Log($"[Cordyceps] {str}"); }

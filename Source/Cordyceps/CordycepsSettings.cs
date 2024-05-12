@@ -50,11 +50,15 @@ namespace Cordyceps
         // First column
         public static Configurable<KeyCode> StartRecordingKey =
             Instance.config.Bind(nameof(StartRecordingKey), KeyCode.R, new ConfigurableInfo(
-                "Press to start recording."));
+                "Press to start recording. See log file for results."));
         
         public static Configurable<KeyCode> StopRecordingKey =
             Instance.config.Bind(nameof(StopRecordingKey), KeyCode.T, new ConfigurableInfo(
-                "Press to stop recording."));
+                "Press to stop recording. See log file for results."));
+
+        public static Configurable<KeyCode> AttemptConnectionKey =
+            Instance.config.Bind(nameof(AttemptConnectionKey), KeyCode.T, new ConfigurableInfo(
+                "Press to make an attempt to connect with OBS. See log file for results."));
         
         // Second column
         public static Configurable<bool> ObsIntegrationOn =
@@ -72,6 +76,7 @@ namespace Cordyceps
             
             Tabs = new[] { new OpTab(this, "Settings"), new OpTab(this, "OBS Integration") };
             
+            // Settings
             Tabs[0].AddItems(new UIelement[]
             {
                 // First column
@@ -127,12 +132,31 @@ namespace Cordyceps
                     "the functions of this mod!")
             });
 
-            // Will need this for later
-            ObsIntegrationOn.OnChange += () =>
+            // This might not work correctly if RecordStatus is Starting or Stopping, but there's a *very* tiny window
+            // for that so I think it's unlikely to be an issue. Things are already broken if it comes up.
+            ObsIntegrationOn.OnChange += async () =>
             {
-                // Callback is triggered whenever settings are applied and the checkbox's value is changed
+                if (ObsIntegrationOn.Value)
+                {
+                    Log("OBS integration re-enabled, ensuring client initialization and attempting connection.");
+
+                    if (!ObsIntegration.HasClient)
+                    {
+                        var (port, password) = ObsIntegration.GetClientConfig();
+                        ObsIntegration.InitializeClient(port, password);
+                    }
+                    
+                    ObsIntegration.AttemptConnection();
+                }
+                else
+                {
+                    Log("OBS integration disabled, disconnecting client.");
+                    await ObsIntegration.StopRecording();
+                    await ObsIntegration.Disconnect();
+                }
             };
             
+            // OBS Integration
             Tabs[1].AddItems(new UIelement[]
             {
                 // First column
@@ -146,6 +170,11 @@ namespace Cordyceps
                 new OpKeyBinder(StopRecordingKey, new Vector2(150f, 535f), 
                     new Vector2(120f, 30f)) {description = StopRecordingKey.info.description},
                 
+                new OpLabel(10f, 505f, "Attempt Connection")
+                    {description = AttemptConnectionKey.info.description},
+                new OpKeyBinder(AttemptConnectionKey, new Vector2(150f, 500f), 
+                    new Vector2(120f, 30f)) {description = AttemptConnectionKey.info.description},
+                
                 // Second column
                 new OpLabel(300f, 575f, "Toggle OBS Integration")
                     {description = ObsIntegrationOn.info.description},
@@ -158,5 +187,7 @@ namespace Cordyceps
                     {description = RecordingFps.info.description}
             });
         }
+        
+        private static void Log(string str) { Debug.Log($"[Cordyceps Settings] {str}"); }
     }
 }
