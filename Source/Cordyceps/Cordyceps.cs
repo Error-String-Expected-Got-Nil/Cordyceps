@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
-using ObsWebSocket.Net.Protocol.Requests;
 using UnityEngine;
 
 namespace Cordyceps
@@ -15,7 +14,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.6.0";
+        public const string PluginVersion = "0.7.0";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -43,8 +42,11 @@ namespace Cordyceps
 
         private static bool _startRecordingHeld;
         private static bool _stopRecordingHeld;
-        private static bool _enableRealtimeModeHeld;
-        private static bool _disableRealtimeModeHeld;
+
+        private static bool _inMenu;
+        private static double _frameRequestCounter;
+
+        private static bool? _recordingStarted;
 
         // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones currently,
         // but will likely update later to do things like check if the game/simulation is running too.
@@ -204,11 +206,27 @@ namespace Cordyceps
         
         private static void RainWorldGame_Update_Hook(On.RainWorldGame.orig_Update orig, RainWorldGame self)
         {
+            self.paused = TickPauseOn;
+            
             orig(self);
 
             try
             {
                 if (CordycepsSettings.ShowTickCounter.Value && !TickCounterPaused && !self.GamePaused) TickCount++;
+                
+                // TODO: Determine why OBS occasionally disconnects for no clear reason. Mainly happens when switching   
+                //  realtime mode, is it because it's sending a request before a response has been received?
+                
+                if (CordycepsSettings.ObsIntegrationOn.Value && ObsIntegration.RecordStatus == RecordStatus.Started 
+                                                             && !TickPauseOn)
+                {
+                    _frameRequestCounter += (double) CordycepsSettings.RecordingFps.Value / UnmodifiedTickrate;
+                    var requestCount = (int) Math.Floor(_frameRequestCounter);
+                    
+                    ObsIntegration.RequestFrames(requestCount);
+
+                    _frameRequestCounter -= requestCount;
+                }
                 
                 if (!WaitingForTick) return;
                 
@@ -231,6 +249,37 @@ namespace Cordyceps
                 {
                     orig(self, dt);
                     return;
+                }
+
+                if (_recordingStarted != null)
+                {
+                    // Have to use null-coalescing since for some reason Rider doesn't realize _recordingStarted can't
+                    // be null here
+                    if ((_recordingStarted ?? false) && !(self.manager.currentMainLoop is RainWorldGame))
+                    {
+                        _inMenu = true;
+                        ObsIntegration.SetRealtimeMode(true);
+                    }
+                    else _inMenu = false;
+                    
+                    _recordingStarted = null;
+                }
+
+                if (self.manager.currentMainLoop is RainWorldGame)
+                {
+                    if (_inMenu)
+                    {
+                        _inMenu = false;
+                        ObsIntegration.SetRealtimeMode(false);
+                    }
+                }
+                else
+                {
+                    if (!_inMenu)
+                    {
+                        _inMenu = true;
+                        ObsIntegration.SetRealtimeMode(true);
+                    }
                 }
                 
                 CheckInputsObs();
@@ -298,7 +347,7 @@ namespace Cordyceps
 
                 _toggleTickPauseHeld = true;
 
-                if (WaitingForTick) return;
+                if (WaitingForTick || ObsIntegration.DisconnectPause) return;
                 game.paused = !game.paused;
                 TickPauseOn = game.paused;
             }
@@ -315,7 +364,7 @@ namespace Cordyceps
 
                 _tickAdvanceHeld = true;
 
-                if (!TickPauseOn) return;
+                if (!TickPauseOn || ObsIntegration.DisconnectPause) return;
                 WaitingForTick = true;
                 game.paused = false;
                 TickPauseOn = false;
@@ -372,15 +421,14 @@ namespace Cordyceps
             _keyHoldStopwatch = 0f;
         }
 
-        private static void CheckInputsObs()
+        private static async void CheckInputsObs()
         {
-            
             if (Input.GetKey(CordycepsSettings.StartRecordingKey.Value))
             {
                 if (_startRecordingHeld) return;
 
                 _startRecordingHeld = true;
-                ObsIntegration.StartRecording();
+                _recordingStarted = await ObsIntegration.StartRecording();
             }
             else _startRecordingHeld = false;
             
@@ -392,24 +440,6 @@ namespace Cordyceps
                 ObsIntegration.StopRecording();
             }
             else _stopRecordingHeld = false;
-            
-            if (Input.GetKey(CordycepsSettings.EnableRealtimeModeKey.Value))
-            {
-                if (_enableRealtimeModeHeld) return;
-
-                _enableRealtimeModeHeld = true;
-                ObsIntegration.SetRealtimeMode(true);
-            }
-            else _enableRealtimeModeHeld = false;
-            
-            if (Input.GetKey(CordycepsSettings.DisableRealtimeModeKey.Value))
-            {
-                if (_disableRealtimeModeHeld) return;
-
-                _disableRealtimeModeHeld = true;
-                ObsIntegration.SetRealtimeMode(false);
-            }
-            else _disableRealtimeModeHeld = false;
         }
 
         private static void Log(string str) { Debug.Log($"[Cordyceps] {str}"); }

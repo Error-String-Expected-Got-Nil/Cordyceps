@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,12 +29,20 @@ namespace Cordyceps
     {
         public static bool Connected { get; private set; }
         public static RecordStatus RecordStatus { get; private set; } = Stopped;
+        public static bool DisconnectPause { get; private set; } = false;
+
+        private static bool _previousPauseState;
+        private static bool _previousWaitingForTickState;
 
         private static ObsWebSocketClient _client;
         private static bool _connecting;
 
-        private static readonly EventWaitHandle RecordStartWaitHandler = new EventWaitHandle(false, 
+        private static readonly EventWaitHandle RecordStartWaitHandle = new EventWaitHandle(false, 
             EventResetMode.AutoReset);
+
+        private static readonly EventWaitHandle ReconnectWaitHandle = new EventWaitHandle(false,
+            EventResetMode.AutoReset);
+        
         private static bool _recordStartSuccess;
 
         public static void InitializeClient(int port, string password)
@@ -64,6 +73,8 @@ namespace Cordyceps
                 else Log("Connection failed, Cordyceps-stalk was not active");
 
                 _connecting = false;
+
+                ReconnectWaitHandle.Set();
             };
 
             _client.OnConnectionFailed += e =>
@@ -71,6 +82,39 @@ namespace Cordyceps
                 Log($"Failed to connect to OBS, reason: {e.Message}");
 
                 _connecting = false;
+            };
+
+            _client.OnClosed += async () =>
+            {
+                Log("WARN - Connection closed unexpectedly, attempting to reconnect");
+
+                DisconnectPause = true;
+                _previousPauseState = Cordyceps.TickPauseOn;
+                _previousWaitingForTickState = Cordyceps.WaitingForTick;
+                Cordyceps.TickPauseOn = true;
+                Cordyceps.WaitingForTick = false;
+                
+                Connected = false;
+                ReconnectWaitHandle.Reset();
+                
+                AttemptConnection();
+
+                var reconnectEvent = Task.Run(ReconnectWaitHandle.WaitOne);
+
+                await Task.WhenAny(reconnectEvent, Task.Delay(2000));
+
+                if (Connected) Log("Reconnection successful");
+                // TODO: Add system for re-initializing and intentionally disconnecting the client
+                else
+                {
+                    Log("Reconnection unsuccessful! Please restart OBS and re-initialize the client before " +
+                        "attempting to reconnect again. It would be best to restart both Rain World and OBS.");
+                    RecordStatus = Stopped;
+                }
+
+                Cordyceps.TickPauseOn = _previousPauseState;
+                Cordyceps.WaitingForTick = _previousWaitingForTickState;
+                DisconnectPause = false;
             };
 
             _client.OnVendorEvent += ve =>
@@ -82,11 +126,11 @@ namespace Cordyceps
                 {
                     case "record_start_success":
                         _recordStartSuccess = true;
-                        RecordStartWaitHandler.Set();
+                        RecordStartWaitHandle.Set();
                         break;
                     case "record_start_fail":
                         _recordStartSuccess = false;
-                        RecordStartWaitHandler.Set();
+                        RecordStartWaitHandle.Set();
                         break;
                 }
             };
@@ -133,7 +177,7 @@ namespace Cordyceps
             // output uses a thread to start itself up. Unless that thread fails to start, the return of 
             // obs_output_start() will always be true, and the output will signal failure later if something goes
             // wrong. So here we're waiting for an event from Cordyceps-stalk saying whether it actually started.
-            var recordStatusEvent = Task.Run(RecordStartWaitHandler.WaitOne);
+            var recordStatusEvent = Task.Run(RecordStartWaitHandle.WaitOne);
             if (await Task.WhenAny(recordStatusEvent, Task.Delay(2000)) != recordStatusEvent)
             {
                 Log("ERROR - Cordyceps timed out on waiting for Cordyceps-stalk output to initialize. This " +
@@ -174,11 +218,24 @@ namespace Cordyceps
         public static void SetRealtimeMode(bool value)
         {
             if (!CanSendRequest() || RecordStatus != Started) return;
+            
+            Log("Attempting to switch realtime mode " + (value ? "on" : "off"));
 
             _client.CallVendorRequest("cordyceps_stalk", "set_realtime_mode",
                 new Dictionary<string, object>
                 {
                     {"value", value}
+                });
+        }
+
+        public static void RequestFrames(int count)
+        {
+            if (!CanSendRequest() || RecordStatus != Started) return;
+
+            _client.CallVendorRequest("cordyceps_stalk", "request_frames",
+                new Dictionary<string, object>
+                {
+                    {"count", count}
                 });
         }
 

@@ -56,18 +56,15 @@ namespace Cordyceps
             Instance.config.Bind(nameof(StopRecordingKey), KeyCode.T, new ConfigurableInfo(
                 "Press to stop recording."));
         
-        public static Configurable<KeyCode> EnableRealtimeModeKey =
-            Instance.config.Bind(nameof(EnableRealtimeModeKey), KeyCode.Y, new ConfigurableInfo(
-                "Press to make recording capture in real time instead of in accord with tickrate."));
-        
-        public static Configurable<KeyCode> DisableRealtimeModeKey =
-            Instance.config.Bind(nameof(DisableRealtimeModeKey), KeyCode.U, new ConfigurableInfo(
-                "Press to make recording capture in accord with tickrate instead of real time."));
-        
         // Second column
         public static Configurable<bool> ObsIntegrationOn =
             Instance.config.Bind(nameof(ObsIntegrationOn), true, new ConfigurableInfo(
                 "Toggle to enable/disable OBS integration entirely."));
+
+        public static Configurable<int> RecordingFps =
+            Instance.config.Bind(nameof(RecordingFps), 60, new ConfigurableInfo(
+                "The frames per second value OBS is set to for recording.", 
+                new ConfigAcceptableRange<int>(1, 300)));
         
         public override void Initialize()
         {
@@ -149,21 +146,16 @@ namespace Cordyceps
                 new OpKeyBinder(StopRecordingKey, new Vector2(150f, 535f), 
                     new Vector2(120f, 30f)) {description = StopRecordingKey.info.description},
                 
-                new OpLabel(10f, 505f, "Enable Real Time Mode")
-                    {description = EnableRealtimeModeKey.info.description},
-                new OpKeyBinder(EnableRealtimeModeKey, new Vector2(150f, 500f), 
-                    new Vector2(120f, 30f)) {description = EnableRealtimeModeKey.info.description},
-                
-                new OpLabel(10f, 470f, "Disable Real Time Mode")
-                    {description = DisableRealtimeModeKey.info.description},
-                new OpKeyBinder(DisableRealtimeModeKey, new Vector2(150f, 465f), 
-                    new Vector2(120f, 30f)) {description = DisableRealtimeModeKey.info.description},
-                
                 // Second column
                 new OpLabel(300f, 575f, "Toggle OBS Integration")
                     {description = ObsIntegrationOn.info.description},
                 new OpCheckBox(ObsIntegrationOn, new Vector2(450f, 570f))
-                    {description = ObsIntegrationOn.info.description}
+                    {description = ObsIntegrationOn.info.description},
+                
+                new OpLabel(300f, 540f, "Recording FPS") 
+                    {description = RecordingFps.info.description},
+                new OpUpdown(RecordingFps, new Vector2(450f, 535f), 120)
+                    {description = RecordingFps.info.description}
             });
         }
     }
