@@ -14,7 +14,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.7.0";
+        public const string PluginVersion = "0.7.1";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
@@ -214,9 +214,6 @@ namespace Cordyceps
             {
                 if (CordycepsSettings.ShowTickCounter.Value && !TickCounterPaused && !self.GamePaused) TickCount++;
                 
-                // TODO: Determine why OBS occasionally disconnects for no clear reason. Mainly happens when switching   
-                //  realtime mode, is it because it's sending a request before a response has been received?
-                
                 if (CordycepsSettings.ObsIntegrationOn.Value && ObsIntegration.RecordStatus == RecordStatus.Started 
                                                              && !TickPauseOn)
                 {
@@ -227,6 +224,8 @@ namespace Cordyceps
 
                     _frameRequestCounter -= requestCount;
                 }
+                
+                // TODO: Tick advance results in laggy footage when recorded with OBS, need to figure out why
                 
                 if (!WaitingForTick) return;
                 
@@ -437,7 +436,9 @@ namespace Cordyceps
                 if (_stopRecordingHeld) return;
 
                 _stopRecordingHeld = true;
-                ObsIntegration.StopRecording();
+                // This await doesn't actually do anything, it's just here to make the compiler stop warning me about
+                // not awaiting this call
+                await ObsIntegration.StopRecording();
             }
             else _stopRecordingHeld = false;
         }

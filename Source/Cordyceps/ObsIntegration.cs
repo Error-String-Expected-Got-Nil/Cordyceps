@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +28,7 @@ namespace Cordyceps
     {
         public static bool Connected { get; private set; }
         public static RecordStatus RecordStatus { get; private set; } = Stopped;
-        public static bool DisconnectPause { get; private set; } = false;
+        public static bool DisconnectPause { get; private set; }
 
         private static bool _previousPauseState;
         private static bool _previousWaitingForTickState;
