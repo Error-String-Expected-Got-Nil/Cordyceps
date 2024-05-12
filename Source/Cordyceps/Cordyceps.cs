@@ -218,6 +218,8 @@ namespace Cordyceps
                     ObsIntegration.RequestFrames(requestCount);
 
                     _frameRequestCounter -= requestCount;
+
+                    ObsIntegration.RecordTime += (double) requestCount / CordycepsSettings.RecordingFps.Value;
                 }
                 
                 if (!WaitingForTick) return;
@@ -274,6 +276,8 @@ namespace Cordyceps
                 }
                 
                 CheckInputsObs();
+
+                if (ObsIntegration.RealtimeMode) ObsIntegration.RecordTime += dt;
 
                 orig(self, dt);
             }
@@ -426,9 +430,7 @@ namespace Cordyceps
                 if (_stopRecordingHeld) return;
 
                 _stopRecordingHeld = true;
-                // This await doesn't actually do anything, it's just here to make the compiler stop warning me about
-                // not awaiting this call
-                await ObsIntegration.StopRecording();
+                ObsIntegration.StopRecording();
             }
             else _stopRecordingHeld = false;
         }

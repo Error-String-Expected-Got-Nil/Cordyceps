@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using System.Text.RegularExpressions;
+using UnityEngine;
 
 namespace Cordyceps
 {
@@ -19,8 +21,11 @@ namespace Cordyceps
 
         private static Vector2 _panelAnchor = new Vector2(100.5f, 700f);
         
-        private static float HeaderHeight => _header.text.Split('\n').Length * _lineHeight;
-        private static float InfoLabelHeight => _infoLabel.text.Split('\n').Length * _lineHeight;
+        // Couldn't get this to align properly so I just added an extra +2.5 to the number of lines on the
+        // HeaderHeight. The grab bounds aren't quite right now but it works, so too bad!
+        private static float HeaderHeight => (Regex.Matches(_header.text, "\n").Count + 3.5f) * _lineHeight;
+        private static float InfoLabelHeight => (Regex.Matches(_infoLabel.text, "\n").Count + 1) 
+                                                * _lineHeight;
         private static Vector2 PanelBounds => new Vector2(280f, HeaderHeight + InfoLabelHeight);
 
         public static void Initialize()
@@ -62,6 +67,7 @@ namespace Cordyceps
 
             _lineHeight = _header.FontLineHeight * _header.scale;
 
+            Update();
             UpdatePosition();
         }
 
@@ -80,6 +86,19 @@ namespace Cordyceps
                 (Cordyceps.TickrateCapOn ? "On" : "Off") + "\n" +
                 (Cordyceps.TickPauseOn ? "On" : "Off") +
                 (CordycepsSettings.ShowTickCounter.Value ? $"\n{Cordyceps.TickCount}" : "");
+
+            if (!CordycepsSettings.ObsIntegrationOn.Value) return;
+            
+            _infoLabel.text +=
+                "\n \n-=- OBS Integration -=-" +
+                "\nRecord time is approximate." +
+                "\nRecord Status:" +
+                "\nRecord Time:";
+
+            _infoLabelData.text +=
+                "\n \n \n" +
+                $"\n{ObsIntegration.RecordStatus.ToString()}" +
+                $"\n{FormatTime(ObsIntegration.RecordTime)}";
         }
 
         private static void UpdatePosition()
@@ -131,6 +150,20 @@ namespace Cordyceps
             {
                 _panelIsGrabbed = false;
             }
+        }
+
+        private static string FormatTime(double sec)
+        {
+            var hours = Math.Floor(sec / 3600);
+            var minutes = Math.Floor(sec / 60) % 60;
+            var seconds = sec % 60;
+            var secondsFloored = Math.Floor(seconds);
+            var secondsDecimal = Math.Round(seconds - secondsFloored, 2) * 100;
+
+            return (hours < 10 ? "0" : "") + $"{(int)hours}:" +
+                   (minutes < 10 ? "0" : "") + $"{(int)minutes}:" +
+                   (secondsFloored < 10 ? "0" : "") + $"{(int)secondsFloored}." +
+                   (secondsDecimal < 10 ? "0" : "") + $"{(int)secondsDecimal}";
         }
     }
 }

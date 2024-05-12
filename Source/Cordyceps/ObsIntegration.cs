@@ -28,6 +28,8 @@ namespace Cordyceps
     {
         public static bool Connected { get; private set; }
         public static RecordStatus RecordStatus { get; private set; } = Stopped;
+        public static double RecordTime;
+        public static bool RealtimeMode;
         public static bool DisconnectPause { get; private set; }
 
         private static bool _previousPauseState;
@@ -195,6 +197,7 @@ namespace Cordyceps
 
             Log("Recording started");
             RecordStatus = Started;
+            RecordTime = 0;
             return true;
         }
 
@@ -202,7 +205,12 @@ namespace Cordyceps
         // true otherwise, since stopping an output should never fail
         public static async Task<bool> StopRecording()
         {
-            if (!CanSendRequest() || RecordStatus != Started) return false;
+            if (!CanSendRequest() || RecordStatus != Started)
+            {
+                Log($"Could not stop recording, relevant variables: _client != null = {_client != null}; " +
+                    $"!_connecting = {!_connecting}; Connected = {Connected}; RecordStatus = {RecordStatus}");
+                return false;
+            }
 
             RecordStatus = Stopping;
 
@@ -211,6 +219,7 @@ namespace Cordyceps
 
             Log("Recording stopped");
             RecordStatus = Stopped;
+            RecordTime = 0;
             return true;
         }
 
@@ -225,6 +234,8 @@ namespace Cordyceps
                 {
                     {"value", value}
                 });
+
+            RealtimeMode = value;
         }
 
         public static void RequestFrames(int count)
