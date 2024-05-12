@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
-using System.Threading.Tasks;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -47,12 +46,10 @@ namespace Cordyceps
         private static double _frameRequestCounter;
 
         private static bool? _recordingStarted;
-
-        // Returns whether or not Cordyceps can/should be able to affect the tickrate right now. Barebones currently,
-        // but will likely update later to do things like check if the game/simulation is running too.
+        
         public static bool CanAffectTickrate()
         {
-            return TickrateCapOn;
+            return TickrateCapOn || TickPauseOn;
         }
         
         private void OnEnable()
@@ -172,9 +169,10 @@ namespace Cordyceps
                 {
                     UnmodifiedTickrate = game.framesPerSecond;
 
-                    CheckInputs(game, dt);
+                    CheckInputs(dt);
 
-                    if (CanAffectTickrate()) game.framesPerSecond = Math.Min(DesiredTickrate, game.framesPerSecond);
+                    if (CanAffectTickrate()) 
+                        game.framesPerSecond = TickPauseOn ? 0 : Math.Min(DesiredTickrate, game.framesPerSecond);
                 }
                 catch (Exception e)
                 {
@@ -206,16 +204,13 @@ namespace Cordyceps
         
         private static void RainWorldGame_Update_Hook(On.RainWorldGame.orig_Update orig, RainWorldGame self)
         {
-            self.paused = TickPauseOn;
-            
             orig(self);
 
             try
             {
                 if (CordycepsSettings.ShowTickCounter.Value && !TickCounterPaused && !self.GamePaused) TickCount++;
                 
-                if (CordycepsSettings.ObsIntegrationOn.Value && ObsIntegration.RecordStatus == RecordStatus.Started 
-                                                             && !TickPauseOn)
+                if (CordycepsSettings.ObsIntegrationOn.Value && ObsIntegration.RecordStatus == RecordStatus.Started)
                 {
                     _frameRequestCounter += (double) CordycepsSettings.RecordingFps.Value / UnmodifiedTickrate;
                     var requestCount = (int) Math.Floor(_frameRequestCounter);
@@ -225,12 +220,9 @@ namespace Cordyceps
                     _frameRequestCounter -= requestCount;
                 }
                 
-                // TODO: Tick advance results in laggy footage when recorded with OBS, need to figure out why
-                
                 if (!WaitingForTick) return;
                 
                 WaitingForTick = false;
-                self.paused = true;
                 TickPauseOn = true;
             }
             catch (Exception e)
@@ -310,7 +302,7 @@ namespace Cordyceps
             }
         }
 
-        private static void CheckInputs(RainWorldGame game, float dt)
+        private static void CheckInputs(float dt)
         {
             if (Input.GetKey(CordycepsSettings.ToggleInfoPanelKey.Value))
             {
@@ -347,8 +339,7 @@ namespace Cordyceps
                 _toggleTickPauseHeld = true;
 
                 if (WaitingForTick || ObsIntegration.DisconnectPause) return;
-                game.paused = !game.paused;
-                TickPauseOn = game.paused;
+                TickPauseOn = !TickPauseOn;
             }
             else _toggleTickPauseHeld = false;
 
@@ -365,7 +356,6 @@ namespace Cordyceps
 
                 if (!TickPauseOn || ObsIntegration.DisconnectPause) return;
                 WaitingForTick = true;
-                game.paused = false;
                 TickPauseOn = false;
             }
             else _tickAdvanceHeld = false;
