@@ -123,7 +123,6 @@ namespace Cordyceps
                 {
                     Log("Reconnection unsuccessful! Please restart OBS and re-initialize the client before " +
                         "attempting to reconnect again. It would be best to restart both Rain World and OBS.");
-                    RecordStatus = Stopped;
                 }
 
                 Cordyceps.TickPauseOn = _previousPauseState;

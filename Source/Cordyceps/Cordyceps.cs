@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Text.Json;
 using BepInEx;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
@@ -13,7 +11,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.7.1";
+        public const string PluginVersion = "0.8.0";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;

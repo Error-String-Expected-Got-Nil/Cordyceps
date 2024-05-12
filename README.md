@@ -19,8 +19,8 @@ Keybinds for the various functions are configurable in the Remix menu, but are s
 
 Pressing and holding the increase/decrease tickrate cap keys will make them rapidly change value, so you don't have to repeatedly press them over and over.
 
-## Note on the Pause Function
-The game is still running while paused with Cordyceps. Functionally, it is equivalent to pausing the game with the standard pause button, except the pause menu doesn't appear, and your inputs aren't eaten by it (since it doesn't exist).
-
 ## Note on the Tick Advance Function
-Tick advance can only be used while the game is paused with Cordyceps, and does not work by immediately forcing the next tick to run. Instead, it simply unpauses the game until the next tick occurs, then automatically pauses it again for you. Any inputs you want to occur on the tick you advance to should be held down while you press the tick advance key. Tick advance is best used while the tickrate cap is set to a low number, I've found about 10 Hz works pretty well.
+Tick advance can only be used while the game is paused with Cordyceps, and does not work by immediately forcing the next tick to run. Instead, it simply unpauses the game until the next tick occurs, then automatically pauses it again for you. Any inputs you want to occur on the tick you advance to should be held down while you press the tick advance key.
+
+## OBS Integration
+Cordyceps can, with the help of a companion plugin called Cordyceps-stalk, integrate with OBS and add additional features. Please see the [OBS.md](/OBS.md) file that comes with this mod for more details.

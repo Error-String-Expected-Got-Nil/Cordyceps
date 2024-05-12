@@ -57,7 +57,7 @@ namespace Cordyceps
                 "Press to stop recording. See log file for results."));
 
         public static Configurable<KeyCode> AttemptConnectionKey =
-            Instance.config.Bind(nameof(AttemptConnectionKey), KeyCode.T, new ConfigurableInfo(
+            Instance.config.Bind(nameof(AttemptConnectionKey), KeyCode.Y, new ConfigurableInfo(
                 "Press to make an attempt to connect with OBS. See log file for results."));
         
         // Second column
