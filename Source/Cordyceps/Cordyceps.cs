@@ -11,7 +11,7 @@ namespace Cordyceps
     {
         public const string PluginGuid = "Cordyceps";
         public const string PluginName = "Cordyceps TAS";
-        public const string PluginVersion = "0.8.0";
+        public const string PluginVersion = "0.8.1";
 
         public static int UnmodifiedTickrate = 40;
         public static int DesiredTickrate = 40;
