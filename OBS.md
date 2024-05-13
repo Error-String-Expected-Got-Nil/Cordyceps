@@ -35,7 +35,7 @@ Password is the WebSocket Server password you copied earlier. Port is also liste
 }
 ```
 
-These are settings for the encoder/output used by Cordyceps-stalk to make the video. Dirpath is the only really relevant one, it's the path to the directory you want recordings to be saved to. **NOTE:** This is *not* the name of the file that is saved, it is the directory you want the files saved to. The default `C:/cordyceps/` path means recordings are saved to a folder named `cordyceps` in the root `C:` directory. For technical reasons, this path must end in a `/` or `\`, and will default back to `C:/cordyceps/` if it doesn't.
+These are settings for the encoder/output used by Cordyceps-stalk to make the video. Dirpath is the only really relevant one, it's the path to the directory you want recordings to be saved to. **NOTE:** This is *not* the name of the file that is saved, it is the directory you want the files saved to. The default `C:/cordyceps/` path means recordings are saved to a folder named `cordyceps` in the root `C:` directory. For technical reasons, this path must end in a `/` or `\`, and will default back to `C:/cordyceps/` if it doesn't. Also, when writing a directory path, if using backslases (`\`), you'll need to make sure they're escaped. In JSON, the backslash acts as an indicator to say "treat the next character as literal", so you can, for instance, use a double quote inside a string without breaking it. This also means that, to use a literal backslash in a string, you'll need to use two in a row to make it read properly. For example, the default directory path with backslashes would be: `C:\\cordyceps\\` instead of `C:\cordyceps\`.
 
 The other settings are only relevant to the video encoder, and are some configuration options for the libx264 H264 encoder used by Cordyceps-stalk. If you don't know what that means, just leave them on the default values shown here.
 
@@ -52,7 +52,5 @@ Most details about connection status will be printed to Rain World's `consoleLog
 
 ## Limitations and Known Issues
 At the time of writing, this feature has *not* been extensively tested, and while I'm fairly sure it should be good enough to use, I can't guarantee it will be stable over long periods. The system isn't exactly robust, and you can get the connection status into weird states that it can't recover from. If this happens, restarting both OBS and Rain World should always fix it, and I'm fairly certain any in-progress recordings should still save correctly even if stopped by closing OBS.
-
-You may also notice a large number of reconnections in the log, this is normal behavior. For reasons I'm not sure of, the connection just seems to be somewhat unstable, and has a habit of disconnecting randomly- most often during loading screens. I don't know how to fix this, so hopefully the reconnection mechanism is good enough to solve it. There seem to be fewer issues when recording is started while already in the game simulation, though I'm not sure on that.
 
 Also, Cordyceps-stalk can't capture sound. I don't think there's a practical way to correct this, unfortunately. Any recordings made with Cordyceps will simply have to be silent.

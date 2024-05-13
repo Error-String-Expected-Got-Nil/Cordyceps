@@ -151,7 +151,7 @@ namespace Cordyceps
                 else
                 {
                     Log("OBS integration disabled, disconnecting client.");
-                    await ObsIntegration.StopRecording();
+                    ObsIntegration.StopRecording();
                     await ObsIntegration.Disconnect();
                 }
             };

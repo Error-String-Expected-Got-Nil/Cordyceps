@@ -28,6 +28,8 @@ namespace Cordyceps
         private static float _keyHoldStopwatch;
         
         private static bool _initialized;
+        
+        // There's probably a better way to do this, but if it ain't broke don't fix it
         private static bool _toggleInfoPanelHeld;
         private static bool _toggleTickrateCapHeld;
         private static bool _increaseTickrateHeld;
@@ -188,13 +190,11 @@ namespace Cordyceps
         private static void MainLoopProcess_RawUpdate_Hook(On.MainLoopProcess.orig_RawUpdate orig, 
             MainLoopProcess self, float dt)
         {
+            orig(self, dt);
+            
             try
             {
-                if (!CordycepsSettings.ObsIntegrationOn.Value)
-                {
-                    orig(self, dt);
-                    return;
-                }
+                if (!CordycepsSettings.ObsIntegrationOn.Value) return;
                 
                 if (_recordingStarted != null)
                 {
@@ -230,8 +230,6 @@ namespace Cordyceps
                 CheckInputsObs();
 
                 if (ObsIntegration.RealtimeMode) ObsIntegration.RecordTime += dt;
-
-                orig(self, dt);
             }
             catch (Exception e)
             {

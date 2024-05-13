@@ -2,6 +2,7 @@
 // Utilizes the ObsWebSocket.Net library, Github page here: https://github.com/wpscott/ObsWebSocket.Net 
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,6 +23,14 @@ namespace Cordyceps
         Stopping,
         Starting,
         Started
+    }
+
+    // A request who's return is not needed, hence "void"
+    public struct VoidRequest
+    {
+        public string Function;
+        public Dictionary<string, object> Arguments;
+        public Action CompletionCallback;
     }
 
     public static class ObsIntegration
@@ -52,6 +61,14 @@ namespace Cordyceps
         
         private static bool _recordStartSuccess;
 
+        private static readonly ConcurrentQueue<VoidRequest> RequestQueue = new ConcurrentQueue<VoidRequest>();
+        
+        private static readonly EventWaitHandle RequestQueueWaitHandle = new EventWaitHandle(false, 
+            EventResetMode.ManualReset);
+
+        private static readonly EventWaitHandle RequestQueueEmptyWaitHandle = new EventWaitHandle(false,
+            EventResetMode.ManualReset);
+        
         public static void InitializeClient(int port, string password)
         {
             if (_client != null) return;
@@ -91,7 +108,7 @@ namespace Cordyceps
                 _connecting = false;
             };
 
-            _client.OnClosed += async () =>
+            _client.OnClosed += () =>
             {
                 if (_intentionalDisconnect)
                 {
@@ -102,32 +119,7 @@ namespace Cordyceps
                 }
                 
                 Log("WARN - Connection closed unexpectedly, attempting to reconnect");
-
-                DisconnectPause = true;
-                _previousPauseState = Cordyceps.TickPauseOn;
-                _previousWaitingForTickState = Cordyceps.WaitingForTick;
-                Cordyceps.TickPauseOn = true;
-                Cordyceps.WaitingForTick = false;
-                
-                Connected = false;
-                ReconnectWaitHandle.Reset();
-                
-                AttemptConnection();
-
-                var reconnectEvent = Task.Run(ReconnectWaitHandle.WaitOne);
-
-                await Task.WhenAny(reconnectEvent, Task.Delay(2000));
-
-                if (Connected) Log("Reconnection successful");
-                else
-                {
-                    Log("Reconnection unsuccessful! Please restart OBS and re-initialize the client before " +
-                        "attempting to reconnect again. It would be best to restart both Rain World and OBS.");
-                }
-
-                Cordyceps.TickPauseOn = _previousPauseState;
-                Cordyceps.WaitingForTick = _previousWaitingForTickState;
-                DisconnectPause = false;
+                HandleReconnect();
             };
 
             _client.OnVendorEvent += ve =>
@@ -147,6 +139,8 @@ namespace Cordyceps
                         break;
                 }
             };
+
+            Task.Run(RequestQueueLoop);
         }
 
         public static (int, string) GetClientConfig()
@@ -213,9 +207,42 @@ namespace Cordyceps
             _client.Connect(EventSubscription.Vendors);
         }
 
+        public static async void HandleReconnect()
+        {
+            DisconnectPause = true;
+            _previousPauseState = Cordyceps.TickPauseOn;
+            _previousWaitingForTickState = Cordyceps.WaitingForTick;
+            Cordyceps.TickPauseOn = true;
+            Cordyceps.WaitingForTick = false;
+                
+            Connected = false;
+            ReconnectWaitHandle.Reset();
+                
+            AttemptConnection();
+
+            var reconnectEvent = Task.Run(ReconnectWaitHandle.WaitOne);
+
+            await Task.WhenAny(reconnectEvent, Task.Delay(2000));
+
+            if (Connected) Log("Reconnection successful");
+            else
+            {
+                Log("Reconnection unsuccessful! Please restart OBS and re-initialize the client before " +
+                    "attempting to reconnect again. It would be best to restart both Rain World and OBS.");
+            }
+
+            Cordyceps.TickPauseOn = _previousPauseState;
+            Cordyceps.WaitingForTick = _previousWaitingForTickState;
+            DisconnectPause = false;
+        }
+
         public static async Task<bool> Disconnect()
         {
             if (!CanSendRequest()) return false;
+
+            // This will hold up the game until the request queue is emptied but that shouldn't take more than a 
+            // second or two under normal circumstances. Famous last words.
+            RequestQueueEmptyWaitHandle.WaitOne();
 
             DisconnectWaitHandle.Reset();
             _intentionalDisconnect = true;
@@ -286,39 +313,75 @@ namespace Cordyceps
             return true;
         }
 
-        // Returns false if not able to send a request right now or recording status doesn't permit stopping, returns
-        // true otherwise, since stopping an output should never fail
-        public static async Task<bool> StopRecording()
+        public static void QueueRequest(VoidRequest request)
+        {
+            RequestQueueEmptyWaitHandle.Reset();
+            RequestQueue.Enqueue(request);
+            RequestQueueWaitHandle.Set();
+        }
+
+        // Either obs-websocket or the client implementation I'm using *do not* like it when I send so many requests
+        // at once. My guess is that trying to send a request before a response has been received or somesuch trips up
+        // one or both of them, resulting in a disconnect. The solution is this queue, which ensures there's only ever
+        // at most one pending request at a time.
+        private static async void RequestQueueLoop()
+        {
+            while (true)
+            {
+                // Event wait here so the loop isn't constantly running when there aren't any requests to send
+                RequestQueueWaitHandle.WaitOne();
+
+                if (RequestQueue.IsEmpty)
+                {
+                    RequestQueueWaitHandle.Reset();
+                    RequestQueueEmptyWaitHandle.Set();
+                    continue;
+                }
+
+                var dequeueSuccess = RequestQueue.TryDequeue(out var request);
+
+                if (!dequeueSuccess) continue;
+                
+                var response = _client.CallVendorRequest("cordyceps_stalk", 
+                    request.Function, request.Arguments);
+
+                if (await Task.WhenAny(response, Task.Delay(300)) != response)
+                {
+                    Log("ERROR - Request response timed out! This shouldn't happen, something is wrong!");
+                }
+                else request.CompletionCallback?.Invoke();
+            }
+        }
+        // "Function never returns" warning shouldn't matter since this function should only ever run in its own thread
+        
+        public static void StopRecording()
         {
             if (!CanSendRequest() || RecordStatus != Started)
             {
                 Log($"Could not stop recording, relevant variables: _client != null = {_client != null}; " +
                     $"!_connecting = {!_connecting}; Connected = {Connected}; RecordStatus = {RecordStatus}");
-                return false;
+                return;
             }
 
             RecordStatus = Stopping;
-
-            await _client.CallVendorRequest("cordyceps_stalk", "stop_recording",
-                new Dictionary<string, object>());
-
-            Log("Recording stopped");
-            RecordStatus = Stopped;
-            RecordTime = 0;
-            return true;
+            
+            QueueRequest(new VoidRequest {Function = "stop_recording", Arguments = new Dictionary<string, object>(), 
+                CompletionCallback = () =>
+                {
+                    Log("Recording stopped");
+                    RecordStatus = Stopped;
+                    RecordTime = 0;
+                }});
         }
 
         public static void SetRealtimeMode(bool value)
         {
             if (!CanSendRequest() || RecordStatus != Started) return;
-            
-            Log("Attempting to switch realtime mode " + (value ? "on" : "off"));
 
-            _client.CallVendorRequest("cordyceps_stalk", "set_realtime_mode",
-                new Dictionary<string, object>
-                {
-                    {"value", value}
-                });
+            QueueRequest(new VoidRequest {Function = "set_realtime_mode", Arguments = new Dictionary<string, object>
+            {
+                {"value", value}
+            }});
 
             RealtimeMode = value;
         }
@@ -327,11 +390,10 @@ namespace Cordyceps
         {
             if (!CanSendRequest() || RecordStatus != Started) return;
 
-            _client.CallVendorRequest("cordyceps_stalk", "request_frames",
-                new Dictionary<string, object>
-                {
-                    {"count", count}
-                });
+            QueueRequest(new VoidRequest {Function = "request_frames", Arguments = new Dictionary<string, object>
+            {
+                {"count", count}
+            }});
         }
 
         private static Task UpdateEncoderSettings()
